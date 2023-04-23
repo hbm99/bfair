@@ -25,7 +25,7 @@ class ClipBasedSensor(Sensor):
         :param List[str] item: list containing image addresses
         :param List[str] attributes: possible attribute class values
         :param str attr_class: attribute class
-        :return: vectorized labels
+        :return: vectorized function that returns the predicted attribute class values
         """
         tokens = [attr_cls + ': ' + attr for attr in attributes]
         text = clip.tokenize(tokens).to(self.device)
@@ -35,8 +35,7 @@ class ClipBasedSensor(Sensor):
             images = [self.preprocess(Image.open(photo_address for photo_address in item))]
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
-                image_features = self.model.encode_image(image_input)
-                logits_per_image, logits_per_text = self.model(image_input, text)
+                logits_per_image, _ = self.model(image_input, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()
                 results.append(probs)
         
@@ -49,3 +48,4 @@ class ClipBasedSensor(Sensor):
 
     def _get_input_type(self) -> SemanticType:
         return Matrix
+    

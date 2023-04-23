@@ -1,13 +1,15 @@
 import argparse
+import os
 import traceback
 from pathlib import Path
 
-from bfair.datasets import load_review
-from bfair.datasets.reviews import REVIEW_COLUMN, GENDER_COLUMN
-from bfair.sensors import SensorHandler, EmbeddingBasedSensor, P_GENDER
-from bfair.sensors.optimization import optimize
-from autogoal.kb import Text
+from autogoal.kb import Text, Matrix
 
+from bfair.datasets import load_review
+from bfair.datasets.reviews import GENDER_COLUMN, REVIEW_COLUMN
+from bfair.sensors import P_GENDER, EmbeddingBasedSensor, SensorHandler
+from bfair.sensors.image.clip.base import ClipBasedSensor
+from bfair.sensors.optimization import optimize
 
 GENDER_VALUES = ["Male", "Female"]
 
@@ -28,6 +30,12 @@ def run_all():
     scores = compute_scores(errors)
     print(scores)
 
+def run_clip():
+    dataset = os.listdir("/Users/hanselblanco/Documents/4to/ML/UTKFace/UTKFace")
+    sensor = ClipBasedSensor()
+    handler = SensorHandler(sensors=[sensor])
+    annotations = handler.annotate(dataset, Matrix, GENDER_VALUES, P_GENDER)
+    print(annotations)
 
 def setup():
     parser = argparse.ArgumentParser()
