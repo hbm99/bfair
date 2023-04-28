@@ -1,5 +1,5 @@
 
-from typing import List
+from typing import List, Set, Union
 
 import clip
 import numpy as np
@@ -13,7 +13,9 @@ BATCH_SIZE = 100000
 
 
 class ClipBasedSensor(Sensor):
-    def __init__(self) -> None:
+    
+    def __init__(self, restricted_to: str | Set[str] = None) -> None:
+        super().__init__(restricted_to)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
     
