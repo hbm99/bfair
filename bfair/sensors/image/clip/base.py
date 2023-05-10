@@ -20,11 +20,11 @@ class ClipBasedSensor(Sensor):
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
     
     
-    def __call__(self, item: List[str], attributes: List[str], attr_cls: str):
+    def __call__(self, item, attributes: List[str], attr_cls: str):
         """
         Calls a ClipBasedSensor execution.
         
-        :param List[str] item: list containing image addresses
+        :param item: list containing images
         :param List[str] attributes: possible attribute class values
         :param str attr_class: attribute class
         :return: vectorized function that returns the predicted attribute class values
@@ -34,7 +34,7 @@ class ClipBasedSensor(Sensor):
         
         results = []
         for i in range(0, len(item), BATCH_SIZE):
-            images = [self.preprocess(Image.open(photo_address for photo_address in item))]
+            images = [self.preprocess(photo) for photo in range(len(item))]
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
                 logits_per_image, _ = self.model(image_input, text)

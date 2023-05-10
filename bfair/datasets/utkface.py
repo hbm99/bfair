@@ -7,6 +7,8 @@ from bfair.envs import UTK_FACE_DATASET
 
 from .base import Dataset
 
+GENDER_VALUES = ["Male", "Female"]
+
 
 def load_dataset(path=UTK_FACE_DATASET, split_seed=None):
     return UTKFaceDataset.load(path, split_seed=split_seed)
