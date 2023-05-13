@@ -5,11 +5,10 @@ import clip
 import numpy as np
 import torch
 from autogoal.kb import Matrix, SemanticType
-from PIL import Image
 
 from bfair.sensors.base import Sensor
 
-BATCH_SIZE = 100000
+BATCH_SIZE = 1000
 
 
 class ClipBasedSensor(Sensor):
@@ -33,8 +32,8 @@ class ClipBasedSensor(Sensor):
         text = clip.tokenize(tokens).to(self.device)
         
         results = []
-        for i in range(0, len(item), BATCH_SIZE):
-            images = [self.preprocess(photo) for photo in range(len(item))]
+        for i in range(0, len(item), min(BATCH_SIZE, len(item) - i)):
+            images = [self.preprocess(photo) for photo in range(i, min(i + BATCH_SIZE, len(item)))]
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
                 logits_per_image, _ = self.model(image_input, text)
