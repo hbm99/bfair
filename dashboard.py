@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from functools import partial
 from collections import OrderedDict
 
 from autogoal.search import ConsoleLogger
@@ -8,8 +9,29 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from bfair.datasets import load_adult, load_german, load_review
-from bfair.datasets.reviews import REVIEW_COLUMN, GENDER_COLUMN, GENDER_VALUES
+from bfair.datasets import (
+    load_adult,
+    load_german,
+    load_review,
+    load_mdgender,
+    load_image_chat,
+)
+from bfair.datasets.reviews import (
+    REVIEW_COLUMN as TEXT_COLUMN_REVIEW,
+    GENDER_COLUMN as GENDER_COLUMN_REVIEW,
+    GENDER_VALUES as GENDER_VALUES_REVIEW,
+)
+from bfair.datasets.mdgender import (
+    TEXT_COLUMN as TEXT_COLUMN_MDGENDER,
+    GENDER_COLUMN as GENDER_COLUMN_MDGENDER,
+    GENDER_VALUES as GENDER_VALUES_MDGENDER,
+)
+from bfair.datasets.imagechat import (
+    TEXT_COLUMN as TEXT_COLUMN_IMAGECHAT,
+    GENDER_COLUMN as GENDER_COLUMN_IMAGECHAT,
+    GENDER_VALUES as GENDER_VALUES_IMAGECHAT,
+)
+
 from bfair.datasets.custom import load_from_file
 from bfair.methods import AutoGoalDiversifier, SklearnMitigator, VotingClassifier
 from bfair.metrics import (
@@ -28,6 +50,7 @@ from bfair.sensors import SensorHandler, CoreferenceNERSensor, DBPediaSensor, P_
 from bfair.sensors.optimization import (
     load as load_from_config,
     get_embedding_based_sensor,
+    generate,
 )
 
 
@@ -413,7 +436,18 @@ def mitigation():
 
 
 @st.cache(allow_output_mutation=True)
-def load_sensors(language, config=None):
+def load_sensors(
+    language,
+    config=None,
+    consider_embedding_sensor=True,
+    consider_coreference_sensor=True,
+    consider_dbpedia_sensor=True,
+    consider_name_gender_sensor=True,
+    force_embedding_sensors=False,
+    force_coreference_sensor=False,
+    force_dbpedia_sensor=False,
+    force_name_gender_sensor=False,
+):
     if config is None:
         ensemble_based_handler_configuration = {
             "plain_mode": True,
@@ -436,26 +470,54 @@ def load_sensors(language, config=None):
         ]
         return SensorHandler(sensors)
     else:
-        generated = load_from_config(config, language=language)
+        generated = load_from_config(
+            config,
+            language=language,
+            root=partial(
+                generate,
+                consider_embedding_sensor=consider_embedding_sensor,
+                consider_coreference_sensor=consider_coreference_sensor,
+                consider_dbpedia_sensor=consider_dbpedia_sensor,
+                consider_name_gender_sensor=consider_name_gender_sensor,
+                force_embedding_sensors=force_embedding_sensors,
+                force_coreference_sensor=force_coreference_sensor,
+                force_dbpedia_sensor=force_dbpedia_sensor,
+                force_name_gender_sensor=force_name_gender_sensor,
+            ),
+        )
         handler = generated.model
         return handler
 
 
 @tab("Tasks")
 def protected_attributes_extraction():
-    dataset_name = st.sidebar.selectbox("Dataset", ["custom", "reviews"])
+    dataset_name = st.sidebar.selectbox(
+        "Dataset", ["custom", "reviews", "mdgender", "imagechat"]
+    )
 
     if dataset_name == "reviews":
         dataset = load_review()
-        X = dataset.data[REVIEW_COLUMN]
-        y = dataset.data[GENDER_COLUMN]
+        X = dataset.data[TEXT_COLUMN_REVIEW]
+        y = dataset.data[GENDER_COLUMN_REVIEW]
+        gender_values = GENDER_VALUES_REVIEW
+    elif dataset_name == "mdgender":
+        dataset = load_mdgender()
+        X = dataset.data[TEXT_COLUMN_MDGENDER]
+        y = dataset.data[GENDER_COLUMN_MDGENDER]
+        gender_values = GENDER_VALUES_MDGENDER
+    elif dataset_name == "imagechat":
+        dataset = load_image_chat()
+        X = dataset.data[TEXT_COLUMN_IMAGECHAT]
+        y = dataset.data[GENDER_COLUMN_IMAGECHAT]
+        gender_values = GENDER_VALUES_IMAGECHAT
     else:
         text = st.text_input("Text")
         if not text:
             st.stop()
 
-        X = pd.Series([text], name=REVIEW_COLUMN)
-        y = pd.Series([("CUSTOM SENTENCE",)], name=GENDER_COLUMN)
+        X = pd.Series([text], name="Text")
+        y = pd.Series([("CUSTOM SENTENCE",)], name="Gender")
+        gender_values = ["Male", "Female"]
 
     language = st.sidebar.selectbox("Language", ["english"])
 
@@ -468,6 +530,16 @@ def protected_attributes_extraction():
         config = None
     elif handler_type == "Custom":
         config_str = st.sidebar.text_area("Custom Handler Configuration")
+
+        consider_embedding = st.sidebar.checkbox("Consider EmbeddingSensors", True)
+        consider_coreference = st.sidebar.checkbox("Consider CoreferenceSensor", True)
+        consider_dbpedia = st.sidebar.checkbox("Consider DBPediaSensor", True)
+        consider_names = st.sidebar.checkbox("Consider NameGenderSensor", True)
+        force_embedding = st.sidebar.checkbox("Force EmbeddingSensors", False)
+        force_coreference = st.sidebar.checkbox("Force CoreferenceSensor", False)
+        force_dbpedia = st.sidebar.checkbox("Force DBPediaSensor", False)
+        force_names = st.sidebar.checkbox("Force NameGenderSensor", False)
+
         try:
             config = eval(config_str)
         except Exception as e:
@@ -479,12 +551,23 @@ def protected_attributes_extraction():
     else:
         st.stop()
 
-    handler = load_sensors(language, config)
+    handler = load_sensors(
+        language,
+        config,
+        consider_embedding_sensor=consider_embedding,
+        consider_coreference_sensor=consider_coreference,
+        consider_dbpedia_sensor=consider_dbpedia,
+        consider_name_gender_sensor=consider_names,
+        force_embedding_sensors=force_embedding,
+        force_coreference_sensor=force_coreference,
+        force_dbpedia_sensor=force_dbpedia,
+        force_name_gender_sensor=force_names,
+    )
     sensors = handler.sensors + [handler]
 
     for sensor in sensors:
         f"## Sensor: {type(sensor).__name__}"
-        predictions = [sensor(review, GENDER_VALUES, P_GENDER) for review in X]
+        predictions = [sensor(review, gender_values, P_GENDER) for review in X]
         results = pd.concat(
             (
                 X,

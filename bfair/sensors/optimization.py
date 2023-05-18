@@ -28,10 +28,11 @@ from bfair.sensors.text import (
     VotingAggregator,
     CoreferenceNERSensor,
     DBPediaSensor,
+    NameGenderSensor,
 )
 from autogoal.kb import Text
 from autogoal.sampling import Sampler
-from autogoal.search import PESearch, ConsoleLogger
+from autogoal.search import NSPESearch, ConsoleLogger
 from nltk.corpus import stopwords
 from statistics import mean
 from functools import partial
@@ -39,6 +40,8 @@ from functools import partial
 PRECISION = "precision"
 RECALL = "recall"
 F1 = "f1"
+MACRO_PRECISION = "macro-precision"
+MACRO_RECALL = "macro-recall"
 MACRO_F1 = "macro-f1"
 
 MICRO_ACC = "micro-accuracy"
@@ -53,6 +56,15 @@ def optimize(
     attributes,
     attr_cls,
     score_key=MACRO_F1,
+    consider_embedding_sensor=True,
+    consider_coreference_sensor=True,
+    consider_dbpedia_sensor=True,
+    consider_name_gender_sensor=True,
+    force_embedding_sensors=False,
+    force_coreference_sensor=False,
+    force_dbpedia_sensor=False,
+    force_name_gender_sensor=False,
+    force_union_merge=False,
     *,
     pop_size,
     search_iterations,
@@ -68,6 +80,8 @@ def optimize(
     output_stream=None,
     language="english",
 ):
+    score_key = score_key if isinstance(score_key, (list, tuple)) else [score_key]
+
     loggers = get_loggers(
         telegram_token=telegram_token,
         telegram_channel=telegram_channel,
@@ -75,19 +89,29 @@ def optimize(
         log_path=log_path,
     )
 
-    search = PESearch(
-        generator_fn=partial(generate, language=language),
+    search = NSPESearch(
+        generator_fn=partial(
+            generate,
+            language=language,
+            consider_embedding_sensor=consider_embedding_sensor,
+            consider_coreference_sensor=consider_coreference_sensor,
+            consider_dbpedia_sensor=consider_dbpedia_sensor,
+            consider_name_gender_sensor=consider_name_gender_sensor,
+            force_embedding_sensors=force_embedding_sensors,
+            force_coreference_sensor=force_coreference_sensor,
+            force_dbpedia_sensor=force_dbpedia_sensor,
+            force_name_gender_sensor=force_name_gender_sensor,
+            force_union_merge=force_union_merge,
+        ),
         fitness_fn=build_fn(
             X_train,
             y_train,
             Text,
             attributes,
             attr_cls,
-            score_func=lambda x, y: compute_scores(compute_errors(x, y, attributes))[
-                score_key
-            ],
+            score_func=build_score_fn(attributes, score_key),
         ),
-        maximize=True,
+        maximize=[True] * len(score_key),
         pop_size=pop_size,
         evaluation_timeout=evaluation_timeout,
         memory_limit=memory_limit,
@@ -121,7 +145,7 @@ def optimize(
         print(scores, file=output_stream)
         print(y_pred, file=output_stream, flush=True)
 
-    return best_solution, best_fn
+    return best_solution, best_fn, search
 
 
 def get_loggers(
@@ -160,25 +184,52 @@ def evaluate(solution, X, y, attributes, attr_cls):
     return y_pred, errors, scores
 
 
-def generate(sampler: Sampler, language="english"):
+def generate(
+    sampler: Sampler,
+    language="english",
+    consider_embedding_sensor=True,
+    consider_coreference_sensor=True,
+    consider_dbpedia_sensor=True,
+    consider_name_gender_sensor=True,
+    force_embedding_sensors=False,
+    force_coreference_sensor=False,
+    force_dbpedia_sensor=False,
+    force_name_gender_sensor=False,
+    force_union_merge=False,
+):
     sampler = LogSampler(sampler)
 
     sensors = []
 
-    if sampler.boolean("include-embedding-sensor"):
+    if force_embedding_sensors or (
+        consider_embedding_sensor and sampler.boolean("include-embedding-sensor")
+    ):
         sensor = get_embedding_based_sensor(sampler, language)
         sensors.append(sensor)
 
-    if sampler.boolean("include-coreference-sensor"):
+    if force_coreference_sensor or (
+        consider_coreference_sensor and sampler.boolean("include-coreference-sensor")
+    ):
         sensor = get_coreference_ner_sensor(sampler, language)
         sensors.append(sensor)
 
-    if sampler.boolean("include-dbpedia-sensor"):
+    if force_dbpedia_sensor or (
+        consider_dbpedia_sensor and sampler.boolean("include-dbpedia-sensor")
+    ):
         sensor = get_dbpedia_sensor(sampler, language)
         sensors.append(sensor)
 
+    if force_name_gender_sensor or (
+        consider_name_gender_sensor and sampler.boolean("include-name-gender-sensor")
+    ):
+        sensor = get_name_gender_sensor(sampler, language)
+        sensors.append(sensor)
+
     if len(sensors) > 1:
-        merge = get_merger(sampler, len(sensors))
+        if force_union_merge:
+            merge = UnionMerge()
+        else:
+            merge = get_merger(sampler, len(sensors))
     else:
         merge = None
 
@@ -299,7 +350,7 @@ def get_aggregation_pipeline(sampler: LogSampler, plain_mode, prefix=""):
             filter = get_filter(sampler, allow_none=True, prefix=f"{prefix}count-{i}")
             aggregator = CountAggregator(attr_filter=filter)
 
-        if aggregator_name == "ActivationAggregator":
+        elif aggregator_name == "ActivationAggregator":
             filter = get_filter(
                 sampler,
                 allow_none=True,
@@ -323,16 +374,19 @@ def get_aggregation_pipeline(sampler: LogSampler, plain_mode, prefix=""):
                 activation_func=activation_func, attr_filter=filter
             )
 
-        if aggregator_name == "UnionAggregator":
+        elif aggregator_name == "UnionAggregator":
             aggregator = UnionAggregator()
 
-        if aggregator_name == "VotingAggregator":
+        elif aggregator_name == "VotingAggregator":
             filter = get_filter(
                 sampler,
                 allow_none=True,
                 prefix=f"{prefix}voting-{i}",
             )
             aggregator = VotingAggregator(attr_filter=filter)
+
+        else:
+            raise ValueError(aggregator_name)
 
         aggregation_pipeline.append(aggregator)
 
@@ -342,6 +396,7 @@ def get_aggregation_pipeline(sampler: LogSampler, plain_mode, prefix=""):
 def get_coreference_ner_sensor(sampler: LogSampler, language):
     prefix = "coreference-sensor."
 
+    just_people = sampler.boolean(f"{prefix}just-people")
     aggregator = get_aggregation_pipeline(
         sampler,
         plain_mode=True,
@@ -349,6 +404,7 @@ def get_coreference_ner_sensor(sampler: LogSampler, language):
     )[0]
     sensor = CoreferenceNERSensor.build(
         language=language,
+        just_people=just_people,
         aggregator=aggregator,
     )
     return sensor
@@ -357,6 +413,7 @@ def get_coreference_ner_sensor(sampler: LogSampler, language):
 def get_dbpedia_sensor(sampler: LogSampler, language):
     prefix = "dbpedia-sensor."
 
+    just_people = sampler.boolean(f"{prefix}just-people")
     cutoff = sampler.continuous(min=0, max=1, handle=f"{prefix}cutoff")
     aggregator = get_aggregation_pipeline(
         sampler,
@@ -366,7 +423,28 @@ def get_dbpedia_sensor(sampler: LogSampler, language):
 
     sensor = DBPediaSensor.build(
         language=language,
+        just_people=just_people,
         fuzzy_cutoff=cutoff,
+        aggregator=aggregator,
+    )
+    return sensor
+
+
+def get_name_gender_sensor(sampler: LogSampler, language):
+    prefix = "name-gender-sensor."
+
+    just_people = sampler.boolean(f"{prefix}just-people")
+    attention_step = sampler.continuous(min=0, max=1, handle=f"{prefix}attention-step")
+    aggregator = get_aggregation_pipeline(
+        sampler,
+        plain_mode=True,
+        prefix=prefix,
+    )[0]
+
+    sensor = NameGenderSensor.build(
+        attention_step=attention_step,
+        language=language,
+        just_people=just_people,
         aggregator=aggregator,
     )
     return sensor
@@ -420,22 +498,35 @@ def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
     return fn
 
 
+def build_score_fn(attributes, score_keys):
+    def score_fn(X, y):
+        errors = compute_errors(X, y, attributes)
+        scores = compute_scores(errors)
+        return tuple(scores[key] for key in score_keys)
+
+    return score_fn
+
+
 def compute_errors(y_test, y_pred, attributes):
     ir_counter = {}
     for value in attributes:
-        correct = 0
+        correct_hit = 0
         spurious = 0
         missing = 0
+        correct_rejection = 0
 
+        # if true_ann or pred_ann contains values not in attributes, errors are not detected.
         for true_ann, pred_ann in zip(y_test, y_pred):
             if value in true_ann and value not in pred_ann:
                 missing += 1
             elif value in pred_ann and value not in true_ann:
                 spurious += 1
-            else:  # if true_ann or pred_ann contains values not in attributes, errors are not detected.
-                correct += 1
+            elif value in true_ann:
+                correct_hit += 1
+            else:
+                correct_rejection += 1
 
-        ir_counter[value] = (correct, spurious, missing)
+        ir_counter[value] = (correct_hit, spurious, missing, correct_rejection)
 
     ac_counter = {}
     for true_ann, pred_ann in zip(y_test, y_pred):
@@ -453,16 +544,21 @@ def compute_scores(errors):
     ir_counter, ac_counter = errors
 
     scores = {}
-    for value, (correct, spurious, missing) in ir_counter.items():
-        precision = safe_division(correct, correct + spurious)
-        recall = safe_division(correct, correct + missing)
+    per_group = []
+    for value, (correct_hit, spurious, missing, _) in ir_counter.items():
+        precision = safe_division(correct_hit, correct_hit + spurious)
+        recall = safe_division(correct_hit, correct_hit + missing)
         f1 = safe_division(2 * precision * recall, precision + recall)
-        scores[value] = {
+        scores[value] = group = {
             PRECISION: precision,
             RECALL: recall,
             F1: f1,
         }
-    scores[MACRO_F1] = mean(group[F1] for group in scores.values())
+        per_group.append(group)
+
+    scores[MACRO_PRECISION] = mean(group[PRECISION] for group in per_group)
+    scores[MACRO_RECALL] = mean(group[RECALL] for group in per_group)
+    scores[MACRO_F1] = mean(group[F1] for group in per_group)
 
     total_correct = 0
     total_total = 0
