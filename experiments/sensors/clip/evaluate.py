@@ -12,7 +12,7 @@ from bfair.sensors.optimization import compute_errors, compute_scores
 
 def main():
     
-    handler = SensorHandler(ClipBasedSensor())
+    clip_sensor = ClipBasedSensor()
     print("Loaded!")
 
     dataset = load_utkface(split_seed=0)
@@ -21,7 +21,7 @@ def main():
     X = dataset.data['image']
     y = dataset.data['gender']
 
-    predictions = [handler(X, GENDER_VALUES, P_GENDER)]
+    predictions = clip_sensor(X, GENDER_VALUES, P_GENDER)
 
     errors = compute_errors(y, predictions, GENDER_VALUES)
     print(errors)
