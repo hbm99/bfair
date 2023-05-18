@@ -35,4 +35,4 @@ class UTKFaceDataset(Dataset):
             
         data = pd.DataFrame(data = images_data)
         
-        return UTKFaceDataset(data)
+        return UTKFaceDataset(data, split_seed=split_seed)
