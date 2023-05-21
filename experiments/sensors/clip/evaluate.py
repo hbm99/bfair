@@ -5,7 +5,6 @@ from bfair.datasets import load_utkface
 from bfair.datasets.utkface import GENDER_VALUES
 from bfair.metrics import exploded_statistical_parity
 from bfair.sensors.base import P_GENDER
-from bfair.sensors.handler import SensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
 
