@@ -8,7 +8,7 @@ from bfair.utils.autogoal import join_input, split_input
 from autogoal.kb import Supervised, VectorCategorical
 from autogoal.ml import AutoML
 from autogoal.search import PESearch
-from autogoal.ml.metrics import supervised_fitness_fn
+# from autogoal.ml.metrics import supervised_fitness_fn
 
 
 class AutoGoalDiversifier:
@@ -43,7 +43,7 @@ class AutoGoalDiversifier:
             number_of_pipelines=n_classifiers,
             maximize=maximize,
             validation_split=validation_split,
-            score_metric=supervised_fitness_fn(score_metric),
+            score_metric=score_metric, # original version: supervised_fitness_fn(score_metric)
             **automl_kwargs,
         )
 

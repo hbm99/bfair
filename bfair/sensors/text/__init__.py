@@ -1,2 +1,2 @@
-from .embedding import *
-from .ner import *
+# from .embedding import *
+# from .ner import *
