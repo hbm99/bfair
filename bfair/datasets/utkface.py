@@ -19,19 +19,22 @@ class UTKFaceDataset(Dataset):
     def load(cls, path, split_seed=None):
         
         images_paths = os.listdir(path)
-        
+        selected_images_paths = []
         images = []
         gender_column = []
         race_column = []
-        for image_path in range(len(images_paths)):
-            splitted = image_path.split('_')
-            images.append(Image.open(image_path))
+        for i in range(0, len(images_paths), 5):
+            if images_paths[i] == '.DS_Store':
+                continue
+            selected_images_paths.append(images_paths[i])
+            splitted = images_paths[i].split('_')
+            images.append(Image.open(path + images_paths[i]))
             gender = splitted[1]
             gender_column.append(gender)
             race = splitted[2]
             race_column.append(race)
             
-        images_data = { 'path': images_paths, 'gender': gender_column, 'race': race_column, 'image': images }
+        images_data = { 'path': selected_images_paths, 'gender': gender_column, 'race': race_column, 'image': images }
             
         data = pd.DataFrame(data = images_data)
         
