@@ -33,23 +33,36 @@ class ClipBasedSensor(Sensor):
         text = clip.tokenize(tokens).to(self.device)
         
         results = []
+        i = 0
         for i in range(0, len(item), min(BATCH_SIZE, len(item) - i)):
-            images = [self.preprocess(item[photo_idx]) for photo_idx in range(i, min(i + BATCH_SIZE, len(item)))]
+            images = [self.preprocess(photo) for photo in item[i: min(i + BATCH_SIZE, len(item))]]
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
                 logits_per_image, _ = self.model(image_input, text)
                 
                 batch_probs = logits_per_image.softmax(dim=-1).cpu().numpy()
-                attribute_probs = [(attributes[j], image_probs[j]) for j in range(len(attributes)) for image_probs in batch_probs]
-                attributed_tokens = [(str(images[j]), attribute_probs[j]) for j in range(len(images))] 
+                
+                attribute_probs = [[] for _ in range(len(batch_probs))]
+                for k in range(len(batch_probs)):
+                    image_probs = batch_probs[k]
+                    for j in range(len(attributes)):
+                        attribute_probs[k].append((attributes[j], image_probs[j]))
+
+                attributed_tokens = []
+                for h in range(i, min(i + BATCH_SIZE, len(item))):
+                    attributed_tokens.append(('image_' + str(i + h % BATCH_SIZE), 
+                                              attribute_probs[h % BATCH_SIZE]))
                 
                 results.append(attributed_tokens)
         
-        flatten_results = np.concatenate(results, axis=0)
+        flatten_results = []
+        for batch in results:
+            for result in batch:
+                flatten_results.append(result)
         
         attributed_tokens = self.filter(flatten_results)
         
-        return attributed_tokens # pending tests, waiting for docker compose to be fixed
+        return attributed_tokens
 
     def _get_input_type(self) -> SemanticType:
         return Matrix
