@@ -7,11 +7,12 @@ from bfair.metrics import exploded_statistical_parity
 from bfair.sensors.base import P_GENDER
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
+from bfair.sensors.text.embedding.filters import BestScoreFilter
 
 
 def main():
     
-    clip_sensor = ClipBasedSensor()
+    clip_sensor = ClipBasedSensor(BestScoreFilter())
     print("Loaded!")
 
     dataset = load_utkface(split_seed=0)
