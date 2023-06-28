@@ -30,7 +30,7 @@ class UTKFaceDataset(Dataset):
             splitted = images_paths[i].split('_')
             images.append(Image.open(path + images_paths[i]))
             gender = splitted[1]
-            gender_column.append(gender)
+            gender_column.append(GENDER_VALUES[int(gender)])
             race = splitted[2]
             race_column.append(race)
             
