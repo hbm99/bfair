@@ -30,6 +30,7 @@ class ClipBasedSensor(Sensor):
         :return: vectorized function that returns the predicted attribute class values
         """
         tokens = [attr_cls + ': ' + attr for attr in attributes]
+        # tokens = ['This is a person of ' + attr + ' ' + attr_cls for attr in attributes]
         text = clip.tokenize(tokens).to(self.device)
         
         results = []
