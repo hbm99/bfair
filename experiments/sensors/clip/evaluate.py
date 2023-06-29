@@ -2,9 +2,9 @@
 import pandas as pd
 
 from bfair.datasets import load_utkface
-from bfair.datasets.utkface import GENDER_VALUES
-from bfair.metrics import exploded_accuracy_disparity, exploded_statistical_parity, exploded_equalized_odds, exploded_equal_opportunity
-from bfair.sensors.base import P_GENDER
+from bfair.datasets.utkface import GENDER_VALUES, RACE_VALUES
+# from bfair.metrics import exploded_accuracy_disparity, exploded_statistical_parity, exploded_equalized_odds, exploded_equal_opportunity
+from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import BestScoreFilter
@@ -19,9 +19,9 @@ def main():
     
     
     X = dataset.data['image']
-    y = dataset.data['gender']
+    y = dataset.data['race']
 
-    predictions = clip_sensor(X, GENDER_VALUES, P_GENDER)
+    predictions = clip_sensor(X, RACE_VALUES, P_RACE)
 
     new_y = [[] for _ in range(len(y))]
     for i in range(len(y)):
@@ -34,7 +34,7 @@ def main():
             new_predictions[i].append(pred_i[j][0])
 
 
-    errors = compute_errors(new_y, new_predictions, GENDER_VALUES)
+    errors = compute_errors(new_y, new_predictions, RACE_VALUES)
     print(errors)
 
     scores = compute_scores(errors)

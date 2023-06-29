@@ -8,6 +8,7 @@ from bfair.envs import UTK_FACE_DATASET
 from .base import Dataset
 
 GENDER_VALUES = ["Male", "Female"]
+RACE_VALUES = ["White", "Black", "Asian", "Indian", "Other"]
 
 
 def load_dataset(path=UTK_FACE_DATASET, split_seed=None):
@@ -32,7 +33,7 @@ class UTKFaceDataset(Dataset):
             gender = splitted[1]
             gender_column.append(GENDER_VALUES[int(gender)])
             race = splitted[2]
-            race_column.append(race)
+            race_column.append(RACE_VALUES[int(race)])
             
         images_data = { 'path': selected_images_paths, 'gender': gender_column, 'race': race_column, 'image': images }
             
