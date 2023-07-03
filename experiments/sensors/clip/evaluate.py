@@ -3,7 +3,7 @@ import pandas as pd
 
 from bfair.datasets import load_utkface
 from bfair.datasets.utkface import GENDER_VALUES, RACE_VALUES
-# from bfair.metrics import exploded_accuracy_disparity, exploded_statistical_parity, exploded_equalized_odds, exploded_equal_opportunity
+from bfair.metrics import exploded_accuracy_disparity
 from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
@@ -40,40 +40,28 @@ def main():
     scores = compute_scores(errors)
     print(scores)
 
-    # results = pd.concat(
-    #     (
-    #         X,
-    #         y.str.join(" & "),
-    #         pd.Series(predictions, name="Predicted", index=X.index).str.join(" & "),
-    #     ),
-    #     axis=1,
-    # )
-    # print(results)
+    """ results = pd.concat(
+        (
+            X,
+            y.str.join(" & "),
+            pd.Series(predictions, name="Predicted", index=X.index).str.join(" & "),
+        ),
+        axis=1,
+    )
+    print(results) """
 
-    # fairness = exploded_accuracy_disparity(
-    #     data=dataset.data,
-    #     protected_attributes= ['gender', 'race'],
-    #     target_attribute='gender',
-    #     target_predictions=None,
-    #     positive_target='0', # '0' = male, '1' = female
-    #     return_probs=True,
-    # )
-    # print(dataset.data)
-    # print("True fairness:", fairness)
 
-    # auto_annotated = dataset.data.copy()
-    # auto_annotated['gender'] = [list(x) for x in predictions]
 
-    # fairness = exploded_accuracy_disparity(
-    #     data=dataset.data,
-    #     protected_attributes= ['gender', 'race'],
-    #     target_attribute='gender',
-    #     target_predictions=None,
-    #     positive_target='0', # '0' = male, '1' = female
-    #     return_probs=True,
-    # )
-    # print(auto_annotated)
-    # print("Estimated fairness:", fairness)
+    fairness = exploded_accuracy_disparity(
+        data=dataset.data,
+        protected_attributes= ['gender', 'race'],
+        target_attribute='race',
+        target_predictions= [new_predictions[i][0] for i in range(len(new_predictions))],
+        positive_target='White',
+        return_probs=True,
+    )
+    print(dataset.data)
+    print("Fairness:", fairness)
 
 
 if __name__ == "__main__":
