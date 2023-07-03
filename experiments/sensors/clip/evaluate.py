@@ -9,8 +9,10 @@ from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import BestScoreFilter
 
+POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 
-def main():
+
+def evaluate(values, attribute):
     
     clip_sensor = ClipBasedSensor(BestScoreFilter())
     print("Loaded!")
@@ -19,9 +21,9 @@ def main():
     
     
     X = dataset.data['image']
-    y = dataset.data['race']
+    y = dataset.data[attribute]
 
-    predictions = clip_sensor(X, RACE_VALUES, P_RACE)
+    predictions = clip_sensor(X, values, attribute)
 
     new_y = [[] for _ in range(len(y))]
     for i in range(len(y)):
@@ -34,7 +36,7 @@ def main():
             new_predictions[i].append(pred_i[j][0])
 
 
-    errors = compute_errors(new_y, new_predictions, RACE_VALUES)
+    errors = compute_errors(new_y, new_predictions, values)
     print(errors)
 
     scores = compute_scores(errors)
@@ -54,10 +56,10 @@ def main():
 
     fairness = exploded_accuracy_disparity(
         data=dataset.data,
-        protected_attributes= ['gender', 'race'],
-        target_attribute='race',
+        protected_attributes= [P_GENDER, P_RACE],
+        target_attribute=attribute,
         target_predictions= [new_predictions[i][0] for i in range(len(new_predictions))],
-        positive_target='White',
+        positive_target=POSITIVE_TARGETS[attribute],
         return_probs=True,
     )
     print(dataset.data)
@@ -65,4 +67,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    evaluate(RACE_VALUES, P_RACE)
