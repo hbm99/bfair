@@ -67,4 +67,4 @@ def evaluate(values, attribute):
 
 
 if __name__ == "__main__":
-    evaluate(GENDER_VALUES, P_GENDER)
+    evaluate(RACE_VALUES, P_RACE)

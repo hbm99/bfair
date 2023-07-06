@@ -7,8 +7,8 @@ from bfair.envs import UTK_FACE_DATASET
 
 from .base import Dataset
 
-GENDER_VALUES = ["Male", "Female"]
-RACE_VALUES = ["White", "Black", "Asian", "Indian", "Other"]
+GENDER_VALUES = ["male", "female"]
+RACE_VALUES = ["white", "black", "asian", "indian", "not white, not black, not asian and not indian"]
 
 
 def load_dataset(path=UTK_FACE_DATASET, split_seed=None):
