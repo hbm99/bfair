@@ -1,5 +1,5 @@
 
-import pandas as pd
+import json
 
 from bfair.datasets import load_utkface
 from bfair.datasets.utkface import GENDER_VALUES, RACE_VALUES
@@ -56,8 +56,43 @@ def evaluate(values, attribute, phrases=None):
     print(dataset.data)
     print("Fairness:", fairness)
 
+    new_fairness = {}
+    for key in fairness[1].keys():
+        value = fairness[1][key]
+        word_accum = ''
+        for word in key:
+            word_accum += word + ' '
+        new_fairness[word_accum] = value
+    
+    new_fairness = (fairness[0], new_fairness)
+
+    return scores, new_fairness
+
 
 if __name__ == "__main__":
-    # phrases = [P_RACE + ': ' + attr for attr in RACE_VALUES]
-    # phrases = ['This is a person of ' + attr + ' ' + P_RACE for attr in RACE_VALUES]
-    evaluate(RACE_VALUES, P_RACE)
+
+
+    attribute_tuples = [(RACE_VALUES, P_RACE), (GENDER_VALUES, P_GENDER)]
+    
+    for attr_tuple in attribute_tuples:
+        attr_values = attr_tuple[0]
+        attr = attr_tuple[1]
+
+        # Phrases
+        phrases_types = [(attr + ": __attr__", [attr + ': ' + value for value in attr_values]), 
+                         ('This is a person of __attr__ ' + attr, ['This is a person of ' + value + ' ' + attr for value in attr_values])]
+    
+        for phrases in phrases_types:
+            phrase_type = phrases[0]
+            phrases_list = phrases[1]
+
+            scores, fairness = evaluate(attr_values, attr, phrases_list)
+            # write scores and fairness to JSON file
+            with open('results/clip_based_sensor/scores__accuracy_disparity__evaluation.json', 'a') as f:
+                result = {
+                    phrase_type: {
+                        'scores': scores,
+                        'fairness': fairness
+                        }
+                }
+                f.write(json.dumps(result) + '\n')
