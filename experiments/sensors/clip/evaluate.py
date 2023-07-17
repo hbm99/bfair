@@ -12,7 +12,10 @@ from bfair.sensors.text.embedding.filters import BestScoreFilter
 POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 
 
-def evaluate(values, attribute):
+def evaluate(values, attribute, phrases=None):
+
+    if not phrases:
+        phrases = [attribute + ': ' + attr for attr in values]
     
     clip_sensor = ClipBasedSensor(BestScoreFilter())
     print("Loaded!")
@@ -23,7 +26,7 @@ def evaluate(values, attribute):
     X = dataset.data['image']
     y = dataset.data[attribute]
 
-    predictions = clip_sensor(X, values, attribute)
+    predictions = clip_sensor(X, values, phrases)
 
     new_y = [[] for _ in range(len(y))]
     for i in range(len(y)):
@@ -42,18 +45,6 @@ def evaluate(values, attribute):
     scores = compute_scores(errors)
     print(scores)
 
-    """ results = pd.concat(
-        (
-            X,
-            y.str.join(" & "),
-            pd.Series(predictions, name="Predicted", index=X.index).str.join(" & "),
-        ),
-        axis=1,
-    )
-    print(results) """
-
-
-
     fairness = exploded_accuracy_disparity(
         data=dataset.data,
         protected_attributes= [P_GENDER, P_RACE],
@@ -67,4 +58,6 @@ def evaluate(values, attribute):
 
 
 if __name__ == "__main__":
+    # phrases = [P_RACE + ': ' + attr for attr in RACE_VALUES]
+    # phrases = ['This is a person of ' + attr + ' ' + P_RACE for attr in RACE_VALUES]
     evaluate(RACE_VALUES, P_RACE)

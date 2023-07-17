@@ -20,17 +20,16 @@ class ClipBasedSensor(Sensor):
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
         self.filter = filter
 
-    def __call__(self, item, attributes: List[str], attr_cls: str):
+    def __call__(self, item, attributes: List[str], tokens: List[str]):
         """
         Calls a ClipBasedSensor execution.
         
-        :param item: list containing images
-        :param List[str] attributes: possible attribute class values
-        :param str attr_class: attribute class
-        :return: vectorized function that returns the predicted attribute class values
+        :param item: images list
+        :param List[str] attributes: attribute class values
+        :param List[str] tokens: phrases list
+        :return: attributed tokens
         """
-        # tokens = [attr_cls + ': ' + attr for attr in attributes]
-        tokens = ['This is a person of ' + attr + ' ' + attr_cls for attr in attributes]
+        
         text = clip.tokenize(tokens).to(self.device)
         
         results = []
