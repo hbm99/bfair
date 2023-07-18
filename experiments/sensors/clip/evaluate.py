@@ -94,10 +94,7 @@ def _get_phrases(attr_values, attr):
                     
     return phrases_types
 
-if __name__ == "__main__":
-
-
-    attribute_tuples = [(RACE_VALUES, P_RACE), (GENDER_VALUES, P_GENDER)]
+def run_experiment(attribute_tuples):
     json_results = []
     for attr_tuple in attribute_tuples:
         attr_values = attr_tuple[0]
@@ -121,6 +118,20 @@ if __name__ == "__main__":
                     }
                 }
             )
-    # write scores and fairness to JSON file
-    with open('results/clip_based_sensor/scores__accuracy_disparity__evaluation.json', 'a') as f:
+            
+    return json_results
+
+def _write_json_file(json_results, filename = 'scores__accuracy_disparity__evaluation'):
+    '''
+    Write scores and fairness to JSON file.
+    '''
+    with open('results/clip_based_sensor/' + filename + '.json', 'a') as f:
         f.write(json.dumps(json_results, indent=4))
+
+if __name__ == "__main__":
+
+    attribute_tuples = [(RACE_VALUES, P_RACE), (GENDER_VALUES, P_GENDER)]
+
+    results = run_experiment(attribute_tuples)
+    
+    _write_json_file(results, 'test')
