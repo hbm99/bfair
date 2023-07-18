@@ -69,30 +69,46 @@ def evaluate(values, attribute, phrases=None):
     return scores, new_fairness
 
 
+def _get_phrases(attr_values, attr):
+    phrases_types = [
+            (attr + ": __attr__", [attr + ': ' + value for value in attr_values]), 
+            ('This is a person of __attr__ ' + attr, ['This is a person of ' + value + ' ' + attr for value in attr_values]),
+            ('This is a person of ' + attr + ' __attr__', ['This is a person of ' + attr + ' ' + value for value in attr_values]),
+            ('A person of __attr__ ' + attr, ['A person of ' + value + ' ' + attr for value in attr_values]),
+            ('A person of ' + attr + ' __attr__', ['A person of ' + attr + ' ' + value for value in attr_values]),
+            ('A __attr__ ' + attr + ' person', ['A ' + value + ' ' + attr + ' person' for value in attr_values]),
+            ('An image of a person of __attr__ ' + attr, ['An image of a person of ' + value + ' ' + attr for value in attr_values])
+                        ]
+                    
+    return phrases_types
+
 if __name__ == "__main__":
 
 
     attribute_tuples = [(RACE_VALUES, P_RACE), (GENDER_VALUES, P_GENDER)]
-    
+    json_results = []
     for attr_tuple in attribute_tuples:
         attr_values = attr_tuple[0]
         attr = attr_tuple[1]
 
-        # Phrases
-        phrases_types = [(attr + ": __attr__", [attr + ': ' + value for value in attr_values]), 
-                         ('This is a person of __attr__ ' + attr, ['This is a person of ' + value + ' ' + attr for value in attr_values])]
+        # phrases
+        phrases_types = _get_phrases(attr_values, attr)
     
         for phrases in phrases_types:
             phrase_type = phrases[0]
             phrases_list = phrases[1]
 
             scores, fairness = evaluate(attr_values, attr, phrases_list)
-            # write scores and fairness to JSON file
-            with open('results/clip_based_sensor/scores__accuracy_disparity__evaluation.json', 'a') as f:
-                result = {
-                    phrase_type: {
+
+            json_results.append(
+                {
+                    phrase_type: 
+                    {
                         'scores': scores,
                         'fairness': fairness
-                        }
+                    }
                 }
-                f.write(json.dumps(result) + '\n')
+            )
+    # write scores and fairness to JSON file
+    with open('results/clip_based_sensor/scores__accuracy_disparity__evaluation.json', 'a') as f:
+        f.write(json.dumps(json_results, indent=4))
