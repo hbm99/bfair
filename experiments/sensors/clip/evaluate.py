@@ -22,29 +22,32 @@ def evaluate(values, attribute, phrases=None):
 
     dataset = load_utkface(split_seed=0)
     
-    
     X = dataset.data['image']
     y = dataset.data[attribute]
 
     predictions = clip_sensor(X, values, phrases)
 
-    new_y = [[] for _ in range(len(y))]
-    for i in range(len(y)):
-        new_y[i].append(y.values[i])
+    new_y, new_predictions = _new_format(y, predictions)
 
-    new_predictions = [[] for _ in range(len(predictions))]
-    for i in range(len(predictions)):
-        pred_i = predictions[i][1]
-        for j in range(len(pred_i)):
-            new_predictions[i].append(pred_i[j][0])
+    scores = _get_scores(values, new_y, new_predictions)
 
+    fairness = _get_accuracy_disparity(attribute, dataset, new_predictions)
 
-    errors = compute_errors(new_y, new_predictions, values)
-    print(errors)
+    return scores, fairness
 
-    scores = compute_scores(errors)
-    print(scores)
+def _get_fairness_to_json(fairness):
+    new_fairness = {}
+    for key in fairness[1].keys():
+        value = fairness[1][key]
+        word_accum = ''
+        for word in key:
+            word_accum += word + ' '
+        new_fairness[word_accum] = value
+    
+    new_fairness = (fairness[0], new_fairness)
+    return new_fairness
 
+def _get_accuracy_disparity(attribute, dataset, new_predictions):
     fairness = exploded_accuracy_disparity(
         data=dataset.data,
         protected_attributes= [P_GENDER, P_RACE],
@@ -55,18 +58,27 @@ def evaluate(values, attribute, phrases=None):
     )
     print(dataset.data)
     print("Fairness:", fairness)
+    return _get_fairness_to_json(fairness)
 
-    new_fairness = {}
-    for key in fairness[1].keys():
-        value = fairness[1][key]
-        word_accum = ''
-        for word in key:
-            word_accum += word + ' '
-        new_fairness[word_accum] = value
-    
-    new_fairness = (fairness[0], new_fairness)
+def _get_scores(values, new_y, new_predictions):
+    errors = compute_errors(new_y, new_predictions, values)
+    print(errors)
 
-    return scores, new_fairness
+    scores = compute_scores(errors)
+    print(scores)
+    return scores
+
+def _new_format(y, predictions):
+    new_y = [[] for _ in range(len(y))]
+    for i in range(len(y)):
+        new_y[i].append(y.values[i])
+
+    new_predictions = [[] for _ in range(len(predictions))]
+    for i in range(len(predictions)):
+        pred_i = predictions[i][1]
+        for j in range(len(pred_i)):
+            new_predictions[i].append(pred_i[j][0])
+    return new_y,new_predictions
 
 
 def _get_phrases(attr_values, attr):
