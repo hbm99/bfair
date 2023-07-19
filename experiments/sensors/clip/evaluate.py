@@ -2,22 +2,27 @@
 import json
 
 from bfair.datasets import load_utkface
-from bfair.datasets.utkface import GENDER_VALUES, RACE_VALUES
+from bfair.datasets.utkface import (GENDER_VALUES, RACE_VALUES,
+                                    RACE_VALUES_WITH_NOT_RULE)
 from bfair.metrics import exploded_accuracy_disparity
 from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.image.clip.base import ClipBasedSensor
+from bfair.sensors.image.clip.filters import NotRuleFilter
 from bfair.sensors.optimization import compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import BestScoreFilter
 
 POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 
 
-def evaluate(values, attribute, phrases=None):
+def evaluate(values, attribute, phrases=None, filter=BestScoreFilter()):
 
     if not phrases:
-        phrases = [attribute + ': ' + attr for attr in values]
+        if isinstance(values, list): # working with not rule
+            phrases = [attribute + ': ' + value for value in values[1]]
+        else:
+            phrases = [attribute + ': ' + attr for attr in values]
     
-    clip_sensor = ClipBasedSensor(BestScoreFilter())
+    clip_sensor = ClipBasedSensor(filter)
     print("Loaded!")
 
     dataset = load_utkface(split_seed=0)
@@ -25,11 +30,17 @@ def evaluate(values, attribute, phrases=None):
     X = dataset.data['image']
     y = dataset.data[attribute]
 
-    predictions = clip_sensor(X, values, phrases)
+    if isinstance(values, list): # working with not rule
+        predictions = clip_sensor(X, values[1], phrases)
+    else:
+        predictions = clip_sensor(X, values, phrases)
 
     new_y, new_predictions = _new_format(y, predictions)
 
-    scores = _get_scores(values, new_y, new_predictions)
+    if isinstance(values, list):
+        scores = _get_scores(values[0], new_y, new_predictions)
+    else:
+        scores = _get_scores(values, new_y, new_predictions)
 
     fairness = _get_accuracy_disparity(attribute, dataset, new_predictions)
 
@@ -76,9 +87,12 @@ def _new_format(y, predictions):
     new_predictions = [[] for _ in range(len(predictions))]
     for i in range(len(predictions)):
         pred_i = predictions[i][1]
+        if not pred_i:
+            new_predictions[i].append('other')
+            continue
         for j in range(len(pred_i)):
             new_predictions[i].append(pred_i[j][0])
-    return new_y,new_predictions
+    return new_y, new_predictions
 
 
 def _get_phrases(attr_values, attr):
@@ -101,13 +115,16 @@ def run_experiment(attribute_tuples):
         attr = attr_tuple[1]
 
         # phrases
-        phrases_types = _get_phrases(attr_values, attr)
+        if isinstance(attr_values, list):
+            phrases_types = _get_phrases(attr_values[1], attr)
+        else: 
+            phrases_types = _get_phrases(attr_values, attr)
     
         for phrases in phrases_types:
             phrase_type = phrases[0]
             phrases_list = phrases[1]
 
-            scores, fairness = evaluate(attr_values, attr, phrases_list)
+            scores, fairness = evaluate(attr_values, attr, phrases_list, NotRuleFilter())
 
             json_results.append(
                 {
@@ -130,8 +147,8 @@ def _write_json_file(json_results, filename = 'scores__accuracy_disparity__evalu
 
 if __name__ == "__main__":
 
-    attribute_tuples = [(RACE_VALUES, P_RACE), (GENDER_VALUES, P_GENDER)]
+    attribute_tuples = [([RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (GENDER_VALUES, P_GENDER)]
 
     results = run_experiment(attribute_tuples)
     
-    _write_json_file(results, 'test')
+    _write_json_file(results, 'scores__accuracy_disparity__evaluation_with_not_rule')
