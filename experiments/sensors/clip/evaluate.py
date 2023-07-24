@@ -14,13 +14,9 @@ from bfair.sensors.text.embedding.filters import BestScoreFilter
 POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 
 
-def evaluate(values, attribute, phrases=None, filter=BestScoreFilter()):
+def evaluate(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule=False):
 
-    if not phrases:
-        if isinstance(values, list): # working with not rule
-            phrases = [attribute + ': ' + value for value in values[1]]
-        else:
-            phrases = [attribute + ': ' + attr for attr in values]
+    phrases = [attribute + ': ' + value for value in values[1]] if not_rule else [attribute + ': ' + attr for attr in values] if not phrases else phrases
     
     clip_sensor = ClipBasedSensor(filter)
     print("Loaded!")
@@ -30,18 +26,12 @@ def evaluate(values, attribute, phrases=None, filter=BestScoreFilter()):
     X = dataset.data['image']
     y = dataset.data[attribute]
 
-    if isinstance(values, list): # working with not rule
-        predictions = clip_sensor(X, values[1], phrases)
-    else:
-        predictions = clip_sensor(X, values, phrases)
+    predictions = clip_sensor(X, values[1] if not_rule else values, phrases)
 
     new_y, new_predictions = _new_format(y, predictions)
 
-    if isinstance(values, list):
-        scores = _get_scores(values[0], new_y, new_predictions)
-    else:
-        scores = _get_scores(values, new_y, new_predictions)
-
+    scores = _get_scores(values[0] if not_rule else values, new_y, new_predictions)
+    
     fairness = _get_accuracy_disparity(attribute, dataset, new_predictions)
 
     return scores, fairness
@@ -111,20 +101,18 @@ def _get_phrases(attr_values, attr):
 def run_experiment(attribute_tuples):
     json_results = []
     for attr_tuple in attribute_tuples:
-        attr_values = attr_tuple[0]
-        attr = attr_tuple[1]
+        not_rule = attr_tuple[0]
+        attr_values = attr_tuple[1]
+        attr = attr_tuple[2]
 
         # phrases
-        if isinstance(attr_values, list):
-            phrases_types = _get_phrases(attr_values[1], attr)
-        else: 
-            phrases_types = _get_phrases(attr_values, attr)
+        phrases_types = _get_phrases(attr_values[1], attr) if not_rule else _get_phrases(attr_values, attr)
     
         for phrases in phrases_types:
             phrase_type = phrases[0]
             phrases_list = phrases[1]
 
-            scores, fairness = evaluate(attr_values, attr, phrases_list, NotRuleFilter())
+            scores, fairness = evaluate(attr_values, attr, phrases_list, NotRuleFilter(), not_rule)
 
             json_results.append(
                 {
@@ -147,7 +135,7 @@ def _write_json_file(json_results, filename = 'scores__accuracy_disparity__evalu
 
 if __name__ == "__main__":
 
-    attribute_tuples = [([RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (GENDER_VALUES, P_GENDER)]
+    attribute_tuples = [(True, [RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (False, GENDER_VALUES, P_GENDER)]
 
     results = run_experiment(attribute_tuples)
     
