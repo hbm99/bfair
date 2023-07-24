@@ -1,4 +1,5 @@
 import os
+import random
 
 import pandas as pd
 from PIL import Image
@@ -12,23 +13,23 @@ RACE_VALUES = ["white", "black", "asian", "indian", "other"]
 RACE_VALUES_WITH_NOT_RULE = ["white", "black", "asian", "indian", "not white", "not black", "not asian", "not indian"]
 
 
-def load_dataset(path=UTK_FACE_DATASET, split_seed=None):
+def load_dataset(path=UTK_FACE_DATASET, split_seed=0):
     return UTKFaceDataset.load(path, split_seed=split_seed)
 
 
 class UTKFaceDataset(Dataset):
     @classmethod
-    def load(cls, path, split_seed=None):
+    def load(cls, path, split_seed=0):
         
         images_paths = os.listdir(path)
-        selected_images_paths = []
+        random.seed(split_seed)
+        images_paths = random.sample(images_paths, len(images_paths)//5)
         images = []
         gender_column = []
         race_column = []
-        for i in range(0, len(images_paths), 5):
+        for i in range(len(images_paths)):
             if images_paths[i] == '.DS_Store':
                 continue
-            selected_images_paths.append(images_paths[i])
             splitted = images_paths[i].split('_')
             images.append(Image.open(path + images_paths[i]))
             gender = splitted[1]
@@ -36,8 +37,8 @@ class UTKFaceDataset(Dataset):
             race = splitted[2]
             race_column.append(RACE_VALUES[int(race)])
             
-        images_data = { 'path': selected_images_paths, 'gender': gender_column, 'race': race_column, 'image': images }
-            
+        images_data = { 'path': images_paths, 'gender': gender_column, 'race': race_column, 'image': images }
+        
         data = pd.DataFrame(data = images_data)
         
         return UTKFaceDataset(data, split_seed=split_seed)

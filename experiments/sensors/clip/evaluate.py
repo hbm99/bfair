@@ -135,8 +135,8 @@ def _write_json_file(json_results, filename = 'scores__accuracy_disparity__evalu
 
 if __name__ == "__main__":
 
-    attribute_tuples = [(True, [RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (False, GENDER_VALUES, P_GENDER)]
+    attribute_tuples = [(False, RACE_VALUES, P_RACE), (False, GENDER_VALUES, P_GENDER)]
 
     results = run_experiment(attribute_tuples)
     
-    _write_json_file(results, 'scores__accuracy_disparity__evaluation_with_not_rule')
+    _write_json_file(results, 'test')
