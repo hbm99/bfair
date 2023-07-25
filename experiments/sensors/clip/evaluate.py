@@ -16,7 +16,7 @@ POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 UTK_FACE_DATASET = None
 
 
-def evaluate(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule=False):
+def evaluate(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule=False, mock_attr_class = {}):
 
     if not phrases: 
         phrases = [attribute + ': ' + value for value in values[1]] if not_rule else [attribute + ': ' + attr for attr in values]
@@ -29,7 +29,10 @@ def evaluate(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule
     X = dataset.data['image']
     y = dataset.data[attribute]
 
-    predictions = clip_sensor(X, values[1] if not_rule else values, phrases)
+    if attribute in mock_attr_class.keys():
+        predictions = [('image_' + str(i), [(mock_attr_class[attribute], 0.99)]) for i in range(len(X))]
+    else:
+        predictions = clip_sensor(X, values[1] if not_rule else values, phrases)
 
     new_y, new_predictions = _new_format(y, predictions)
 
@@ -101,7 +104,7 @@ def _get_phrases(attr_values, attr):
                     
     return phrases_types
 
-def run_experiment(attribute_tuples):
+def run_experiment(attribute_tuples, mock_attr_class = {}):
     json_results = []
     for attr_tuple in attribute_tuples:
         not_rule = attr_tuple[0]
@@ -115,7 +118,7 @@ def run_experiment(attribute_tuples):
             phrase_type = phrases[0]
             phrases_list = phrases[1]
 
-            scores, fairness = evaluate(attr_values, attr, phrases_list, NotRuleFilter(), not_rule)
+            scores, fairness = evaluate(attr_values, attr, phrases_list, NotRuleFilter(), not_rule, mock_attr_class)
 
             json_results.append(
                 {
@@ -140,8 +143,8 @@ if __name__ == "__main__":
 
     UTK_FACE_DATASET = load_utkface(split_seed=0)
 
-    attribute_tuples = [(True, [RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (False, GENDER_VALUES, P_GENDER)]
+    attribute_tuples = [(False, RACE_VALUES, P_RACE), (False, GENDER_VALUES, P_GENDER)]
 
-    results = run_experiment(attribute_tuples)
+    results = run_experiment(attribute_tuples, {P_GENDER: GENDER_VALUES[0]})
     
-    _write_json_file(results, 'results_with_not_rule')
+    _write_json_file(results, 'results_always_male')
