@@ -13,15 +13,18 @@ from bfair.sensors.text.embedding.filters import BestScoreFilter
 
 POSITIVE_TARGETS = {P_GENDER: 'Male', P_RACE: 'White'}
 
+UTK_FACE_DATASET = None
+
 
 def evaluate(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule=False):
 
-    phrases = [attribute + ': ' + value for value in values[1]] if not_rule else [attribute + ': ' + attr for attr in values] if not phrases else phrases
+    if not phrases: 
+        phrases = [attribute + ': ' + value for value in values[1]] if not_rule else [attribute + ': ' + attr for attr in values]
     
     clip_sensor = ClipBasedSensor(filter)
     print("Loaded!")
 
-    dataset = load_utkface(split_seed=0)
+    dataset = UTK_FACE_DATASET
     
     X = dataset.data['image']
     y = dataset.data[attribute]
@@ -135,8 +138,10 @@ def _write_json_file(json_results, filename = 'scores__accuracy_disparity__evalu
 
 if __name__ == "__main__":
 
-    attribute_tuples = [(False, RACE_VALUES, P_RACE), (False, GENDER_VALUES, P_GENDER)]
+    UTK_FACE_DATASET = load_utkface(split_seed=0)
+
+    attribute_tuples = [(True, [RACE_VALUES, RACE_VALUES_WITH_NOT_RULE], P_RACE), (False, GENDER_VALUES, P_GENDER)]
 
     results = run_experiment(attribute_tuples)
     
-    _write_json_file(results, 'test')
+    _write_json_file(results, 'results_with_not_rule')
