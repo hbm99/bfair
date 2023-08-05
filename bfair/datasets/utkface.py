@@ -12,6 +12,9 @@ GENDER_VALUES = ["male", "female"]
 RACE_VALUES = ["white", "black", "asian", "indian", "other"]
 RACE_VALUES_WITH_NOT_RULE = ["white", "black", "asian", "indian", "not white", "not black", "not asian", "not indian"]
 
+GENDER_COLUMN = 'gender'
+RACE_COLUMN = 'race'
+
 
 def load_dataset(path=UTK_FACE_DATASET, split_seed=0):
     return UTKFaceDataset.load(path, split_seed=split_seed)

@@ -145,13 +145,6 @@ if __name__ == "__main__":
 
     attribute_tuples = [(False, RACE_VALUES, P_RACE), (False, GENDER_VALUES, P_GENDER)]
 
-    for item in GENDER_VALUES:
-        results = run_experiment(attribute_tuples, {P_GENDER: item})
-        
-        _write_json_file(results, 'results_always_' + item)
-
-    for item in RACE_VALUES:
-        results = run_experiment(attribute_tuples, {P_RACE: item})
-        
-        _write_json_file(results, 'results_always_' + item)
+    results = run_experiment(attribute_tuples)
     
+    _write_json_file(results, 'test')
