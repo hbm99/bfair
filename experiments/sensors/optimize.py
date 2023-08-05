@@ -36,7 +36,6 @@ from autogoal.kb import Text, Matrix
 from bfair.datasets import load_review
 from bfair.datasets.reviews import GENDER_COLUMN, REVIEW_COLUMN
 from bfair.sensors import P_GENDER, EmbeddingBasedSensor, SensorHandler
-from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import optimize
 
 DB_REVIEWS = "reviews"
@@ -66,13 +65,6 @@ def run_all():
     errors = compute_errors(gold, predicted, GENDER_VALUES_REVIEW)
     scores = compute_scores(errors)
     print(scores)
-
-def run_clip():
-    dataset = os.listdir("/Users/hanselblanco/Documents/4to/ML/UTKFace/UTKFace")
-    sensor = ClipBasedSensor()
-    handler = SensorHandler(sensors=[sensor])
-    annotations = handler.annotate(dataset, Matrix, GENDER_VALUES, P_GENDER)
-    print(annotations)
 
 def setup():
     parser = argparse.ArgumentParser()
