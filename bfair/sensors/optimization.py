@@ -176,9 +176,9 @@ def get_loggers(
     return loggers
 
 
-def evaluate(solution, X, y, attributes, attr_cls):
+def evaluate(solution, X, y, attributes, attr_cls, autogoal_type=Text):
     handler: SensorHandler = solution.model
-    y_pred = [handler.annotate(item, Text, attributes, attr_cls) for item in X]
+    y_pred = [handler.annotate(item, autogoal_type, attributes, attr_cls) for item in X]
     errors = compute_errors(y, y_pred, attributes)
     scores = compute_scores(errors)
     return y_pred, errors, scores
