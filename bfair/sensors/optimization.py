@@ -486,25 +486,44 @@ def evaluate(solution, X, y, attributes, attr_cls, autogoal_type=Text):
 #         raise ValueError(merge_mode)
 
 
+# def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
+#     def fn(generated: SampleModel):
+#         handler: SensorHandler = generated.model
+#         y_pred = [
+#             handler.annotate(item, stype, attributes, attr_cls) for item in X_test
+#         ]
+#         score = score_func(y_test, y_pred)
+#         return score
+
+#     return fn
+
+def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, score_func):
+    handler: SensorHandler = generated.model
+    y_pred = [
+        handler.annotate(item, stype, attributes, attr_cls) for item in X_test
+    ]
+    score = score_func(y_test, y_pred)
+    return score
+
 def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
-    def fn(generated: SampleModel):
-        handler: SensorHandler = generated.model
-        y_pred = [
-            handler.annotate(item, stype, attributes, attr_cls) for item in X_test
-        ]
-        score = score_func(y_test, y_pred)
-        return score
+    return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)
 
-    return fn
 
+# def build_score_fn(attributes, score_keys):
+#     def score_fn(X, y):
+#         errors = compute_errors(X, y, attributes)
+#         scores = compute_scores(errors)
+#         return tuple(scores[key] for key in score_keys)
+
+#     return score_fn
+
+def score_fn(X, y, attributes, score_keys):
+    errors = compute_errors(X, y, attributes)
+    scores = compute_scores(errors)
+    return tuple(scores[key] for key in score_keys)
 
 def build_score_fn(attributes, score_keys):
-    def score_fn(X, y):
-        errors = compute_errors(X, y, attributes)
-        scores = compute_scores(errors)
-        return tuple(scores[key] for key in score_keys)
-
-    return score_fn
+    return partial(score_fn, attributes=attributes, score_keys=score_keys)
 
 
 def compute_errors(y_test, y_pred, attributes):
