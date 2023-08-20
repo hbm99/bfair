@@ -37,7 +37,7 @@ def optimize(
     loggers = [ConsoleLogger()]
 
     search = PESearch(
-        generator_fn =  partial(generate, Sampler(random_state=0)), # generate(Sampler(random_state=0), consider_clip_based_sensor, force_clip_based_sensor),
+        generator_fn =  partial(generate, consider_clip_based_sensor = consider_clip_based_sensor, force_clip_based_sensor = force_clip_based_sensor),
         fitness_fn = build_fn(
             X_train,
             y_train,
