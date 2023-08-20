@@ -4,18 +4,14 @@ import traceback
 from pathlib import Path
 
 import pandas as pd
-from autogoal.kb import Matrix
 
 from bfair.datasets import load_utkface
 from bfair.datasets.utkface import (GENDER_COLUMN, GENDER_VALUES, RACE_COLUMN,
                                     RACE_VALUES, RACE_VALUES_WITH_NOT_RULE)
 from bfair.sensors import P_GENDER, P_RACE
-from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.image.clip.optimization import optimize
 from bfair.sensors.optimization import (MACRO_ACC, MACRO_F1, MACRO_PRECISION,
-                                        MACRO_RECALL, MICRO_ACC,
-                                        compute_errors, compute_scores)
-from bfair.sensors.text.embedding.filters import BestScoreFilter
+                                        MACRO_RECALL, MICRO_ACC)
 
 DB_UTKFACE = 'utkface'
 
@@ -23,29 +19,12 @@ SENSOR_CLIPBASED = "clipbased"
 
 IMAGE_COLUMN = 'image'
 
-
-# def run_clip(values, attribute, phrases=None, filter=BestScoreFilter(), not_rule=False, mock_attr_class = {}):
-
-#     if not phrases: 
-#         phrases = [attribute + ': ' + value for value in values[1]] if not_rule else [attribute + ': ' + attr for attr in values]
-
-#     dataset = load_utkface(split_seed=None)
-#     clip_sensor = ClipBasedSensor(filter)
-#     images = dataset.data[IMAGE_COLUMN]
-
-#     predictions = clip_sensor(images, values[1] if not_rule else values, phrases)
-        
-#     gold = dataset.data[P_GENDER]
-#     errors = compute_errors(gold, predictions, GENDER_VALUES)
-#     scores = compute_scores(errors)
-#     print(scores)
-
 def setup():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--iterations", type=int, default=10000)
-    parser.add_argument("--eval-timeout", type=int, default=None)
-    parser.add_argument("--memory", type=int, default=None)
+    parser.add_argument("--eval-timeout", type=int, default=1000)
+    parser.add_argument("--memory", type=int, default=1000)
     parser.add_argument("--popsize", type=int, default=50)
     parser.add_argument("--global-timeout", type=int, default=60 * 60)
     parser.add_argument("--token", default=None)
@@ -120,13 +99,13 @@ def main():
             sensitive_values,
             attr_cls,
             score_key=args.metric if args.metric else [MACRO_F1],
+            force_clip_based_sensor=True,
             pop_size=args.popsize,
             search_iterations=args.iterations,
             evaluation_timeout=args.eval_timeout,
             memory_limit=args.memory * 1024**3 if args.memory else None,
             search_timeout=args.global_timeout,
             errors="warn",
-            log_path=args.output,
             inspect=True,
             output_stream=output_stream,
         )

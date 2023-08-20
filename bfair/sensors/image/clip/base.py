@@ -20,6 +20,10 @@ class ClipBasedSensor(Sensor):
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
         self.filter = filter
 
+    @classmethod
+    def build(cls, filtering_pipeline=()):
+        return cls(filtering_pipeline)
+
     def __call__(self, item, attributes: List[str], tokens: List[str]):
         """
         Calls a ClipBasedSensor execution.
