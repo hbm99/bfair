@@ -34,10 +34,16 @@ def optimize(
 ):
     score_key = score_key if isinstance(score_key, (list, tuple)) else [score_key]
 
+    tokens_pipeline = get_tokens_pipeline(attr_cls, attributes)
+
     loggers = [ConsoleLogger()]
 
     search = PESearch(
-        generator_fn =  partial(generate, consider_clip_based_sensor = consider_clip_based_sensor, force_clip_based_sensor = force_clip_based_sensor),
+        generator_fn =  partial(
+            generate, 
+            consider_clip_based_sensor = consider_clip_based_sensor, 
+            force_clip_based_sensor = force_clip_based_sensor, 
+            tokens_pipeline = tokens_pipeline),
         fitness_fn = build_fn(
             X_train,
             y_train,
@@ -85,35 +91,36 @@ def optimize(
     return best_solution, best_fn, search
 
 
-def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False):
+def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False, *, tokens_pipeline):
     """
     Generates a new SampleModel object with the given Sampler.
-
-    Args:
-        sampler (Sampler): The Sampler to use for generating samples.
-
-    Returns:
-        SampleModel: A new SampleModel object with the given Sampler.
     """
-    print(type(sampler), flush=True)
     sampler = LogSampler(sampler)
     sensors = []
     if force_clip_based_sensor or (consider_clip_based_sensor and sampler.boolean("include-clip-sensor")):
-        sensor = get_clip_based_sensor(sampler)
+        sensor = get_clip_based_sensor(sampler, tokens_pipeline)
         sensors.append(sensor)
 
     handler = SensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
 
-def get_clip_based_sensor(sampler: LogSampler):
+def get_clip_based_sensor(sampler: LogSampler, tokens_pipeline):
     prefix = "clip-sensor."
 
     filtering_pipeline = get_filtering_pipeline(sampler, prefix)
 
     sensor = ClipBasedSensor.build(
         filtering_pipeline=filtering_pipeline,
+        tokens_pipeline=tokens_pipeline
     )
     return sensor
+
+def get_tokens_pipeline(attr, attr_values):
+    tokens_pipeline = []
+
+    tokens_pipeline.append([attr + ': ' + value for value in attr_values])
+
+    return tokens_pipeline
 
 def get_filtering_pipeline(sampler: LogSampler, prefix):
     filtering_pipeline = []
@@ -131,7 +138,6 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
     if allow_none:
         options.append("None")
 
-    # print(type(sampler), flush=True)
     filter_name = sampler.choice(options, handle=f"{prefix}-filter")
 
     if filter_name == "LargeEnoughFilter":

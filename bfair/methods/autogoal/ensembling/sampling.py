@@ -56,7 +56,6 @@ class LogSampler:
         return self._log_sample(handle, value, log=log)
 
     def choice(self, options, handle=None, log=True):
-        # print(type(self._sampler), flush=True)
         value = self._sampler.choice(options, handle)
         return self._log_sample(handle, value, log=log)
 

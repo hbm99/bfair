@@ -1,5 +1,5 @@
 
-from typing import List, Set, Union
+from typing import List, Sequence, Set, Union
 
 import clip
 import numpy as np
@@ -14,17 +14,18 @@ BATCH_SIZE = 64
 
 class ClipBasedSensor(Sensor):
     
-    def __init__(self, filter: Filter, restricted_to: Union[str, Set[str]] = None) -> None:
+    def __init__(self, filtering_pipeline: Sequence[Filter], tokens_pipeline: Sequence[List[str]], restricted_to: Union[str, Set[str]] = None) -> None:
         super().__init__(restricted_to)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
-        self.filter = filter
+        self.filtering_pipeline = filtering_pipeline
+        self.tokens_pipeline = tokens_pipeline
 
     @classmethod
-    def build(cls, filtering_pipeline=()):
-        return cls(filtering_pipeline)
+    def build(cls, filtering_pipeline=(), tokens_pipeline=()):
+        return cls(filtering_pipeline, tokens_pipeline)
 
-    def __call__(self, item, attributes: List[str], tokens: List[str]):
+    def __call__(self, item, attributes: List[str]):
         """
         Calls a ClipBasedSensor execution.
         
@@ -33,8 +34,8 @@ class ClipBasedSensor(Sensor):
         :param List[str] tokens: phrases list
         :return: attributed tokens
         """
-        
-        text = clip.tokenize(tokens).to(self.device)
+        for tokens in self.tokens_pipeline:
+            text = clip.tokenize(tokens).to(self.device)
         
         results = []
         i = 0
@@ -64,7 +65,8 @@ class ClipBasedSensor(Sensor):
             for result in batch:
                 flatten_results.append(result)
         
-        attributed_tokens = self.filter(flatten_results)
+        for filter in self.filtering_pipeline:
+            attributed_tokens = filter(flatten_results)
         
         return attributed_tokens
 
