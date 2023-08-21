@@ -25,13 +25,12 @@ class ClipBasedSensor(Sensor):
     def build(cls, filtering_pipeline=(), tokens_pipeline=()):
         return cls(filtering_pipeline, tokens_pipeline)
 
-    def __call__(self, item, attributes: List[str]):
+    def __call__(self, item, attributes: List[str], attr_cls: str):
         """
         Calls a ClipBasedSensor execution.
         
         :param item: images list
         :param List[str] attributes: attribute class values
-        :param List[str] tokens: phrases list
         :return: attributed tokens
         """
         for tokens in self.tokens_pipeline:
