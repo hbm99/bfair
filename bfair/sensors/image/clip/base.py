@@ -65,9 +65,20 @@ class ClipBasedSensor(Sensor):
                 flatten_results.append(result)
         
         for filter in self.filtering_pipeline:
+
+            # debugging
+            # print(str(type(filter)) + '!!!!!!!!!!', flush=True)
+            # print('BEFORE FILTER ' + str(attributed_tokens[-1]), flush=True)
+            ############
+
             attributed_tokens = filter(flatten_results)
-        
-        return attributed_tokens
+
+            # debugging
+            # print('AFTER FILTER ' + str(attributed_tokens[-1]), flush=True)
+            ##############
+            break
+
+        return attributed_tokens # pending output change to labels
 
     def _get_input_type(self) -> SemanticType:
         return Matrix

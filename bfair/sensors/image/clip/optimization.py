@@ -7,7 +7,7 @@ from autogoal.search import ConsoleLogger, PESearch
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
-from bfair.sensors.optimization import build_fn, build_score_fn, evaluate
+from bfair.sensors.optimization import compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import (BestScoreFilter,
                                                   IdentityFilter,
                                                   LargeEnoughFilter,
@@ -166,3 +166,29 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
     else:
         raise ValueError(filter_name)
+    
+
+def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, score_func):
+    handler: ImageSensorHandler = generated.model
+    y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
+    score = score_func(y_test, y_pred)
+    return score
+
+def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
+    return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)
+
+def score_fn(X, y, attributes, score_keys):
+    errors = compute_errors(X, y, attributes)
+    scores = compute_scores(errors)
+    return tuple(scores[key] for key in score_keys)
+
+def build_score_fn(attributes, score_keys):
+    return partial(score_fn, attributes=attributes, score_keys=score_keys)
+
+
+def evaluate(solution, X, y, attributes, attr_cls, autogoal_type):
+    handler: ImageSensorHandler = solution.model
+    y_pred = handler.annotate(X, autogoal_type, attributes, attr_cls)
+    errors = compute_errors(y, y_pred, attributes)
+    scores = compute_scores(errors)
+    return y_pred, errors, scores
