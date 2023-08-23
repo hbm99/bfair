@@ -2,13 +2,16 @@ from functools import partial
 
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
-from autogoal.search import PESearch, ConsoleLogger
+from autogoal.search import ConsoleLogger, PESearch
 
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
-from bfair.sensors.handler import SensorHandler
+from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import build_fn, build_score_fn, evaluate
-from bfair.sensors.text.embedding.filters import BestScoreFilter, IdentityFilter, LargeEnoughFilter, NonEmptyFilter
+from bfair.sensors.text.embedding.filters import (BestScoreFilter,
+                                                  IdentityFilter,
+                                                  LargeEnoughFilter,
+                                                  NonEmptyFilter)
 
 MACRO_F1 = "macro-f1"
 
@@ -101,7 +104,7 @@ def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based
         sensor = get_clip_based_sensor(sampler, tokens_pipeline)
         sensors.append(sensor)
 
-    handler = SensorHandler(sensors, merge=None)
+    handler = ImageSensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
 
 def get_clip_based_sensor(sampler: LogSampler, tokens_pipeline):
