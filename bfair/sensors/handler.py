@@ -57,10 +57,35 @@ class SensorHandler:
             return SemanticType.infer(item)
         except ValueError:
             return None
+        
+class ImageSensorHandler(SensorHandler):
+    def forward(
+        self,
+        data,
+        sensors: List[Sensor],
+        attributes: List[str],
+        attr_cls: str,
+    ):
+        annotations = [sensor(data, attributes, attr_cls) for sensor in sensors]
+
+        final = []
+        for i in range(len(annotations[0])):
+            image_annotations = []
+            for sensor_annotations in annotations:
+                image_annotations.append(sensor_annotations[i])
+
+            print('Image annotations:')
+            print(image_annotations, flush=True)
+            
+            merged_annotations = self.merge(image_annotations)
+            final.append(merged_annotations)
+        return final
 
 
 class UnionMerge:
     def __call__(self, annotations):
+        # print(str(type(annotations)) + 'TIPO ANOTACION!!!!!!!', flush=True)
+        # print(str(annotations) + '!!!!!!!!!!!', flush=True)
         return set([attr for attributes in annotations for attr in attributes])
 
 
