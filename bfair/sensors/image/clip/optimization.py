@@ -1,4 +1,5 @@
 from functools import partial
+from statistics import mean
 
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
@@ -172,7 +173,7 @@ def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, scor
     handler: ImageSensorHandler = generated.model
     y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
     score = score_func(y_test, y_pred)
-    return score
+    return mean(score)
 
 def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
     return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)

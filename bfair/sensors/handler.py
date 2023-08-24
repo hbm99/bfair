@@ -73,10 +73,6 @@ class ImageSensorHandler(SensorHandler):
             image_annotations = []
             for sensor_annotations in annotations:
                 image_annotations.append(sensor_annotations[i])
-
-            print('Image annotations:')
-            print(image_annotations, flush=True)
-            
             merged_annotations = self.merge(image_annotations)
             final.append(merged_annotations)
         return final
@@ -84,8 +80,6 @@ class ImageSensorHandler(SensorHandler):
 
 class UnionMerge:
     def __call__(self, annotations):
-        # print(str(type(annotations)) + 'TIPO ANOTACION!!!!!!!', flush=True)
-        # print(str(annotations) + '!!!!!!!!!!!', flush=True)
         return set([attr for attributes in annotations for attr in attributes])
 
 
