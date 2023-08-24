@@ -178,9 +178,16 @@ def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
     return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)
 
 def score_fn(X, y, attributes, score_keys):
+    X, y, attributes = eval_preprocess(X, y, attributes)
     errors = compute_errors(X, y, attributes)
     scores = compute_scores(errors)
     return tuple(scores[key] for key in score_keys)
+
+def eval_preprocess(X, y, attributes):
+    X = [[x.lower()] for x in X] # true annotations are one-element lists because of binary classification in tagged data
+    y = [[s.lower() for s in lst] for lst in y]
+    attributes = [attr.lower() for attr in attributes]
+    return X, y, attributes
 
 def build_score_fn(attributes, score_keys):
     return partial(score_fn, attributes=attributes, score_keys=score_keys)
@@ -189,6 +196,7 @@ def build_score_fn(attributes, score_keys):
 def evaluate(solution, X, y, attributes, attr_cls, autogoal_type):
     handler: ImageSensorHandler = solution.model
     y_pred = handler.annotate(X, autogoal_type, attributes, attr_cls)
+    y, y_pred, attributes = eval_preprocess(X, y, attributes)
     errors = compute_errors(y, y_pred, attributes)
     scores = compute_scores(errors)
     return y_pred, errors, scores
