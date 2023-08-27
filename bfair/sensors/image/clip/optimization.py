@@ -38,16 +38,16 @@ def optimize(
 ):
     score_key = score_key if isinstance(score_key, (list, tuple)) else [score_key]
 
-    tokens_pipeline = get_tokens_pipeline(attr_cls, attributes)
-
     loggers = [ConsoleLogger()]
 
     search = PESearch(
         generator_fn =  partial(
             generate, 
             consider_clip_based_sensor = consider_clip_based_sensor, 
-            force_clip_based_sensor = force_clip_based_sensor, 
-            tokens_pipeline = tokens_pipeline),
+            force_clip_based_sensor = force_clip_based_sensor,
+            attr_cls = attr_cls, 
+            attributes = attributes
+        ),
         fitness_fn = build_fn(
             X_train,
             y_train,
@@ -95,23 +95,24 @@ def optimize(
     return best_solution, best_fn, search
 
 
-def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False, *, tokens_pipeline):
+def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False, *, attr_cls, attributes):
     """
     Generates a new SampleModel object with the given Sampler.
     """
     sampler = LogSampler(sampler)
     sensors = []
     if force_clip_based_sensor or (consider_clip_based_sensor and sampler.boolean("include-clip-sensor")):
-        sensor = get_clip_based_sensor(sampler, tokens_pipeline)
+        sensor = get_clip_based_sensor(sampler, attr_cls, attributes)
         sensors.append(sensor)
 
     handler = ImageSensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
 
-def get_clip_based_sensor(sampler: LogSampler, tokens_pipeline):
+def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
     prefix = "clip-sensor."
 
     filtering_pipeline = get_filtering_pipeline(sampler, prefix)
+    tokens_pipeline = get_tokens_pipeline(sampler, attr_cls, attributes, prefix)
 
     sensor = ClipBasedSensor.build(
         filtering_pipeline=filtering_pipeline,
@@ -119,12 +120,22 @@ def get_clip_based_sensor(sampler: LogSampler, tokens_pipeline):
     )
     return sensor
 
-def get_tokens_pipeline(attr, attr_values):
-    tokens_pipeline = []
+def get_tokens_pipeline(sampler: LogSampler, attr, attr_values, prefix):
+    phrase_sentences = get_phrase(sampler, attr, attr_values, prefix=f"{prefix}phrase")
+    return [phrase_sentences]
 
-    tokens_pipeline.append([attr + ': ' + value for value in attr_values])
-
-    return tokens_pipeline
+def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
+    options = {
+        attr + ": __attr__": [attr + ': ' + value for value in attr_values],
+        'This is a person of __attr__ ' + attr: ['This is a person of ' + value + ' ' + attr for value in attr_values],
+        'This is a person of ' + attr + ' __attr__': ['This is a person of ' + attr + ' ' + value for value in attr_values],
+        'A person of __attr__ ' + attr: ['A person of ' + value + ' ' + attr for value in attr_values],
+        'A person of ' + attr + ' __attr__': ['A person of ' + attr + ' ' + value for value in attr_values],
+        'A __attr__ ' + attr + ' person': ['A ' + value + ' ' + attr + ' person' for value in attr_values],
+        'An image of a person of __attr__ ' + attr: ['An image of a person of ' + value + ' ' + attr for value in attr_values],
+    }
+    phrase = sampler.choice(list(options.keys()), handle=f"{prefix}-phrase")
+    return options[phrase]
 
 def get_filtering_pipeline(sampler: LogSampler, prefix):
     filtering_pipeline = []
