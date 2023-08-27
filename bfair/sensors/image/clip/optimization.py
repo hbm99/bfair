@@ -8,13 +8,12 @@ from autogoal.search import ConsoleLogger, PESearch
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
-from bfair.sensors.optimization import compute_errors, compute_scores
+from bfair.sensors.optimization import MACRO_F1, compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import (BestScoreFilter,
                                                   IdentityFilter,
                                                   LargeEnoughFilter,
                                                   NonEmptyFilter)
 
-MACRO_F1 = "macro-f1"
 
 def optimize(
     X_train,
