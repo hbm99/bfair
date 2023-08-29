@@ -76,7 +76,7 @@ def optimize(
         print("Results @ Training ...", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
-        print(y_pred, file=output_stream, flush=True)
+        # print(y_pred, file=output_stream, flush=True)
 
         y_pred, counter, scores = evaluate(
             best_solution,
@@ -89,7 +89,7 @@ def optimize(
         print("Results @ Testing ....", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
-        print(y_pred, file=output_stream, flush=True)
+        # print(y_pred, file=output_stream, flush=True)
 
     return best_solution, best_fn, search
 
@@ -142,8 +142,8 @@ def get_filtering_pipeline(sampler: LogSampler, prefix):
     filter = get_filter(sampler, allow_none=True, prefix=f"{prefix}filter")
     filtering_pipeline.append(filter)
 
-    filter = NonEmptyFilter()
-    filtering_pipeline.append(filter)
+    # filter = NonEmptyFilter()
+    # filtering_pipeline.append(filter)
 
     return filtering_pipeline
 
@@ -156,16 +156,16 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
     if filter_name == "LargeEnoughFilter":
         norm_threshold = sampler.continuous(
-            0, 1, handle=f"{prefix}-large-norm-threshold"
+            0.1, 0.9, handle=f"{prefix}-large-norm-threshold"
         )
         return LargeEnoughFilter(norm_threshold)
 
     elif filter_name == "BestScoreFilter":
         relative_threshold = sampler.continuous(
-            0, 1, handle=f"{prefix}-best-relative-threshold"
+            0.1, 0.9, handle=f"{prefix}-best-relative-threshold"
         )
         norm_threshold = sampler.continuous(
-            0, 1, handle=f"{prefix}-best-norm-threshold"
+            0.1, 0.9, handle=f"{prefix}-best-norm-threshold"
         )
         return BestScoreFilter(
             threshold=relative_threshold,
@@ -207,7 +207,7 @@ def build_score_fn(attributes, score_keys):
 def evaluate(solution, X, y, attributes, attr_cls, autogoal_type):
     handler: ImageSensorHandler = solution.model
     y_pred = handler.annotate(X, autogoal_type, attributes, attr_cls)
-    y, y_pred, attributes = eval_preprocess(X, y, attributes)
+    y, y_pred, attributes = eval_preprocess(y, y_pred, attributes)
     errors = compute_errors(y, y_pred, attributes)
     scores = compute_scores(errors)
     return y_pred, errors, scores
