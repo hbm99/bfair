@@ -22,11 +22,11 @@ IMAGE_COLUMN = 'image'
 def setup():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--iterations", type=int, default=10000)
+    parser.add_argument("--iterations", type=int, default=10)
     parser.add_argument("--eval-timeout", type=int, default=1000)
     parser.add_argument("--memory", type=int, default=1000)
     parser.add_argument("--popsize", type=int, default=50)
-    parser.add_argument("--global-timeout", type=int, default=60 * 60)
+    parser.add_argument("--global-timeout", type=int, default=60)
     parser.add_argument("--token", default=None)
     parser.add_argument("--channel", default=None)
     parser.add_argument("--output", default="")
@@ -113,11 +113,6 @@ def main():
         print("Best solution", file=output_stream)
         print(best_fn, file=output_stream)
         print(best_solution, file=output_stream, flush=True)
-
-        print("Other solutions", file=output_stream)
-        for model, fn in zip(search.top_solutions, search.top_solutions_scores):
-            print(fn, file=output_stream)
-            print(model, file=output_stream, flush=True)
 
     except Exception as e:
         print(
