@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from bfair.datasets import load_utkface
+from bfair.datasets import load_utkface, load_fairface
 from bfair.datasets.utkface import (GENDER_COLUMN, GENDER_VALUES, RACE_COLUMN,
                                     RACE_VALUES, RACE_VALUES_WITH_NOT_RULE)
 from bfair.sensors import P_GENDER, P_RACE
@@ -14,6 +14,7 @@ from bfair.sensors.optimization import (MACRO_ACC, MACRO_F1, MACRO_PRECISION,
                                         MACRO_RECALL, MICRO_ACC)
 
 DB_UTKFACE = 'utkface'
+DB_FAIRFACE = 'fairface'
 
 SENSOR_CLIPBASED = "clipbased"
 
@@ -40,8 +41,8 @@ def setup():
     parser.add_argument(
         "--dataset",
         action="append",
-        choices=[DB_UTKFACE],
-        default=[DB_UTKFACE],
+        choices=[DB_UTKFACE, DB_FAIRFACE],
+        default=[DB_FAIRFACE],
     )
     parser.add_argument(
         "--skip",
@@ -80,11 +81,14 @@ def main():
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)
-            images_for_training.append(dataset.data[IMAGE_COLUMN])
-            annotations_for_training.append(dataset.data[GENDER_COLUMN])
-            images_for_testing.append(dataset.test[IMAGE_COLUMN])
-            annotations_for_testing.append(dataset.test[GENDER_COLUMN])
 
+        if DB_FAIRFACE in args.dataset:
+            dataset = load_fairface(split_seed=0)
+        
+        images_for_training.append(dataset.data[IMAGE_COLUMN])
+        annotations_for_training.append(dataset.data[GENDER_COLUMN])
+        images_for_testing.append(dataset.test[IMAGE_COLUMN])
+        annotations_for_testing.append(dataset.test[GENDER_COLUMN])
 
         X_train = pd.concat(images_for_training)
         y_train = pd.concat(annotations_for_training)
