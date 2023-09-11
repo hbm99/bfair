@@ -26,7 +26,7 @@ class UTKFaceDataset(Dataset):
         
         images_paths = os.listdir(path)
         random.seed(split_seed)
-        images_paths = random.sample(images_paths, len(images_paths)//5)
+        images_paths = random.sample(images_paths, len(images_paths)//3)
         images = []
         gender_column = []
         race_column = []
