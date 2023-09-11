@@ -42,7 +42,7 @@ def setup():
         "--dataset",
         action="append",
         choices=[DB_UTKFACE, DB_FAIRFACE],
-        default=[],
+        default=[DB_FAIRFACE],
     )
     parser.add_argument(
         "--skip",
