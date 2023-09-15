@@ -110,6 +110,10 @@ def main():
             memory_limit=args.memory * 1024**3 if args.memory else None,
             search_timeout=args.global_timeout,
             errors="warn",
+            telegram_token=args.token,
+            telegram_channel=args.channel,
+            telegram_title=args.title,
+            log_path=args.output,
             inspect=True,
             output_stream=output_stream,
         )

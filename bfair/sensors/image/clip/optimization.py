@@ -32,12 +32,21 @@ def optimize(
     memory_limit,
     search_timeout,
     errors="warn",
+    telegram_token=None,
+    telegram_channel=None,
+    telegram_title="",
+    log_path=None,
     inspect=False,
     output_stream=None,
 ):
     score_key = score_key if isinstance(score_key, (list, tuple)) else [score_key]
 
-    loggers = [ConsoleLogger()]
+    loggers = get_loggers(
+        telegram_token=telegram_token,
+        telegram_channel=telegram_channel,
+        telegram_title=telegram_title,
+        log_path=log_path,
+    )
 
     search = PESearch(
         generator_fn =  partial(
@@ -90,6 +99,33 @@ def optimize(
         print(scores, file=output_stream)
 
     return best_solution, best_fn, search
+
+def get_loggers(
+    *,
+    telegram_token=None,
+    telegram_channel=None,
+    telegram_title="",
+    log_path=None,
+):
+    loggers = [ConsoleLogger()]
+
+    if telegram_token:
+        from autogoal.contrib.telegram import TelegramLogger
+
+        telegram = TelegramLogger(
+            token=telegram_token,
+            name=telegram_title.upper(),
+            channel=telegram_channel,
+        )
+        loggers.append(telegram)
+
+    if log_path:
+        from bfair.utils.autogoal import FileLogger
+
+        file_logger = FileLogger(output_path=log_path)
+        loggers.append(file_logger)
+
+    return loggers
 
 
 def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False, *, attr_cls, attributes):
