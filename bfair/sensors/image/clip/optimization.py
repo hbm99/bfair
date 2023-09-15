@@ -76,7 +76,6 @@ def optimize(
         print("Results @ Training ...", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
-        # print(y_pred, file=output_stream, flush=True)
 
         y_pred, counter, scores = evaluate(
             best_solution,
@@ -89,7 +88,6 @@ def optimize(
         print("Results @ Testing ....", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
-        # print(y_pred, file=output_stream, flush=True)
 
     return best_solution, best_fn, search
 
@@ -156,16 +154,16 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
     if filter_name == "LargeEnoughFilter":
         norm_threshold = sampler.continuous(
-            0.1, 0.9, handle=f"{prefix}-large-norm-threshold"
+            0, 1, handle=f"{prefix}-large-norm-threshold"
         )
         return LargeEnoughFilter(norm_threshold)
 
     elif filter_name == "BestScoreFilter":
         relative_threshold = sampler.continuous(
-            0.1, 0.9, handle=f"{prefix}-best-relative-threshold"
+            0, 1, handle=f"{prefix}-best-relative-threshold"
         )
         norm_threshold = sampler.continuous(
-            0.1, 0.9, handle=f"{prefix}-best-norm-threshold"
+            0, 1, handle=f"{prefix}-best-norm-threshold"
         )
         return BestScoreFilter(
             threshold=relative_threshold,

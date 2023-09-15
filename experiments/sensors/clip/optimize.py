@@ -23,11 +23,11 @@ IMAGE_COLUMN = 'image'
 def setup():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--iterations", type=int, default=10)
+    parser.add_argument("--iterations", type=int, default=100)
     parser.add_argument("--eval-timeout", type=int, default=1000)
     parser.add_argument("--memory", type=int, default=1000)
     parser.add_argument("--popsize", type=int, default=50)
-    parser.add_argument("--global-timeout", type=int, default=60)
+    parser.add_argument("--global-timeout", type=int, default=20000)
     parser.add_argument("--token", default=None)
     parser.add_argument("--channel", default=None)
     parser.add_argument("--output", default="")
