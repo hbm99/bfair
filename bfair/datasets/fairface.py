@@ -60,5 +60,5 @@ class FairFaceDataset(Dataset):
             ],
             axis=1
         )
-        return FairFaceDataset(data=data.sample(30000), split_seed=split_seed)
+        return FairFaceDataset(data=data.sample(3000, random_state=split_seed), split_seed=split_seed)
 

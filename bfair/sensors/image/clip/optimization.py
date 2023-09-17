@@ -154,9 +154,6 @@ def get_filtering_pipeline(sampler: LogSampler, prefix):
     filter = get_filter(sampler, allow_none=True, prefix=f"{prefix}filter")
     filtering_pipeline.append(filter)
 
-    # filter = NonEmptyFilter()
-    # filtering_pipeline.append(filter)
-
     return filtering_pipeline
 
 def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
@@ -207,7 +204,7 @@ def score_fn(X, y, attributes, score_keys):
     return tuple(scores[key] for key in score_keys)
 
 def eval_preprocess(X, y, attributes):
-    X = [[x.lower()] for x in X] # true annotations are one-element lists because of binary classification in tagged data
+    X = [[x.lower()] for x in X] # true annotations are one-element lists because of single classification in tagged data
     y = [[s.lower() for s in lst] for lst in y]
     attributes = [attr.lower() for attr in attributes]
     return X, y, attributes

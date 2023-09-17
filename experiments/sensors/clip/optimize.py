@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from bfair.datasets import load_utkface, load_fairface
-from bfair.datasets.utkface import (GENDER_COLUMN, GENDER_VALUES, RACE_COLUMN,
-                                    RACE_VALUES, RACE_VALUES_WITH_NOT_RULE)
+from bfair.datasets import load_fairface, load_utkface
+from bfair.datasets.fairface import GENDER_VALUES as FF_GENDER_VALUES
+from bfair.datasets.fairface import RACE_VALUES as FF_RACE_VALUES
+from bfair.datasets.utkface import GENDER_VALUES as UTKF_GENDER_VALUES
+from bfair.datasets.utkface import RACE_VALUES as UTKF_RACE_VALUES
 from bfair.sensors import P_GENDER, P_RACE
 from bfair.sensors.image.clip.optimization import optimize
 from bfair.sensors.optimization import (MACRO_ACC, MACRO_F1, MACRO_PRECISION,
@@ -76,8 +78,8 @@ def main():
         annotations_for_training = []
         images_for_testing = []
         annotations_for_testing = []
-        attr_cls = P_GENDER
-        sensitive_values = ["Male", "Female"]
+        attr_cls = P_RACE
+        values = FF_RACE_VALUES
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)
@@ -86,9 +88,9 @@ def main():
             dataset = load_fairface(split_seed=0)
         
         images_for_training.append(dataset.data[IMAGE_COLUMN])
-        annotations_for_training.append(dataset.data[GENDER_COLUMN])
+        annotations_for_training.append(dataset.data[P_RACE])
         images_for_testing.append(dataset.test[IMAGE_COLUMN])
-        annotations_for_testing.append(dataset.test[GENDER_COLUMN])
+        annotations_for_testing.append(dataset.test[P_RACE])
 
         X_train = pd.concat(images_for_training)
         y_train = pd.concat(annotations_for_training)
@@ -100,7 +102,7 @@ def main():
             y_train,
             X_test,
             y_test,
-            sensitive_values,
+            values,
             attr_cls,
             score_key=args.metric if args.metric else [MACRO_F1],
             force_clip_based_sensor=True,
