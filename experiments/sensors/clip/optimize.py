@@ -121,6 +121,11 @@ def main():
         print(best_fn, file=output_stream)
         print(best_solution, file=output_stream, flush=True)
 
+        print("Other solutions", file=output_stream)
+        for model, fn in zip(search.top_solutions, search.top_solutions_scores):
+            print(fn, file=output_stream)
+            print(model, file=output_stream, flush=True)
+
     except Exception as e:
         print(
             "\n",

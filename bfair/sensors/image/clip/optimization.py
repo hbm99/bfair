@@ -3,7 +3,7 @@ from statistics import mean
 
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
-from autogoal.search import ConsoleLogger, PESearch
+from autogoal.search import ConsoleLogger, NSPESearch
 
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
@@ -42,7 +42,7 @@ def optimize(
         log_path=log_path,
     )
 
-    search = PESearch(
+    search = NSPESearch(
         generator_fn =  partial(
             generate, 
             consider_clip_based_sensor = consider_clip_based_sensor, 
@@ -192,7 +192,7 @@ def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, scor
     handler: ImageSensorHandler = generated.model
     y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
     score = score_func(y_test, y_pred)
-    return mean(score)
+    return score
 
 def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
     return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)
