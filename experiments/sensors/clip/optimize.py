@@ -78,8 +78,8 @@ def main():
         annotations_for_training = []
         images_for_testing = []
         annotations_for_testing = []
-        attr_cls = P_RACE
-        values = FF_RACE_VALUES
+        attr_cls = P_GENDER
+        values = FF_GENDER_VALUES
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)
@@ -88,9 +88,9 @@ def main():
             dataset = load_fairface(split_seed=0)
         
         images_for_training.append(dataset.data[IMAGE_COLUMN])
-        annotations_for_training.append(dataset.data[P_RACE])
+        annotations_for_training.append(dataset.data[attr_cls])
         images_for_testing.append(dataset.test[IMAGE_COLUMN])
-        annotations_for_testing.append(dataset.test[P_RACE])
+        annotations_for_testing.append(dataset.test[attr_cls])
 
         X_train = pd.concat(images_for_training)
         y_train = pd.concat(annotations_for_training)
