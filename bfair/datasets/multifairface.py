@@ -1,4 +1,4 @@
-from random import random
+from random import random, sample
 
 import pandas as pd
 
@@ -41,10 +41,11 @@ class MultiFairFaceDataset(Dataset):
         mixed_data = pd.DataFrame(columns=data.columns)
         num_rows = len(data)
         for i in range(num_rows):
-            rows_to_concat = random.randint(0, 6)
             row_i = data.iloc[i]
+            
             image_list = [row_i[IMAGE_COLUMN]]
-            for j in range(rows_to_concat):
+            rows_to_concat = random.randint(0, 6)
+            for _ in range(rows_to_concat):
                 row_j = data.iloc[random.randint(0, num_rows - 1)]
 
                 image_list.append(row_j[IMAGE_COLUMN])
@@ -52,7 +53,7 @@ class MultiFairFaceDataset(Dataset):
                 for attribute in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
                     row_i[attribute] = merge_attribute_values(attribute, row_i, row_j)
                 
-            row_i[IMAGE_COLUMN] = concat_images(image_list)
+            row_i[IMAGE_COLUMN] = concat_images([sample(image_list, random.randint(1, 3)) for _ in range(3)])
             mixed_data.append(row_i, ignore_index=True)
         
         return MultiFairFaceDataset(data=mixed_data.sample(30000, random_state=split_seed), split_seed=split_seed)
