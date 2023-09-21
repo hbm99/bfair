@@ -40,7 +40,7 @@ class MultiFairFaceDataset(Dataset):
         # Create a new dataset with mixed images
         mixed_data = pd.DataFrame(columns=data.columns)
         num_rows = len(data)
-        for i in range(num_rows):
+        for i in range(30000):
             row_i = data.iloc[i]
             
             image_list = [row_i[IMAGE_COLUMN]]
@@ -56,7 +56,7 @@ class MultiFairFaceDataset(Dataset):
             row_i[IMAGE_COLUMN] = concat_images([sample(image_list, randint(1, len(image_list))) for _ in range(3)])
             mixed_data = mixed_data.append(row_i, ignore_index=True)
         
-        return MultiFairFaceDataset(data=mixed_data.sample(30000, random_state=split_seed), split_seed=split_seed)
+        return MultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
 
     
 
