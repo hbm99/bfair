@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from bfair.datasets import load_fairface, load_utkface
+from bfair.datasets import load_fairface, load_utkface, load_multifairface
 from bfair.datasets.fairface import GENDER_VALUES as FF_GENDER_VALUES
 from bfair.datasets.fairface import RACE_VALUES as FF_RACE_VALUES
 from bfair.datasets.utkface import GENDER_VALUES as UTKF_GENDER_VALUES
@@ -17,6 +17,7 @@ from bfair.sensors.optimization import (MACRO_ACC, MACRO_F1, MACRO_PRECISION,
 
 DB_UTKFACE = 'utkface'
 DB_FAIRFACE = 'fairface'
+DB_MULTIFAIRFACE = 'multifairface'
 
 SENSOR_CLIPBASED = "clipbased"
 
@@ -43,8 +44,8 @@ def setup():
     parser.add_argument(
         "--dataset",
         action="append",
-        choices=[DB_UTKFACE, DB_FAIRFACE],
-        default=[DB_FAIRFACE],
+        choices=[DB_UTKFACE, DB_FAIRFACE, DB_MULTIFAIRFACE],
+        default=[DB_MULTIFAIRFACE],
     )
     parser.add_argument(
         "--skip",
@@ -86,6 +87,9 @@ def main():
 
         if DB_FAIRFACE in args.dataset:
             dataset = load_fairface(split_seed=0)
+
+        if DB_MULTIFAIRFACE in args.dataset:
+            dataset = load_multifairface(split_seed=0)
         
         images_for_training.append(dataset.data[IMAGE_COLUMN])
         annotations_for_training.append(dataset.data[attr_cls])

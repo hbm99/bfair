@@ -39,4 +39,4 @@ def merge_attribute_values(attribute, row_i, row_j):
         attribute_value_i.append(attribute_value_j)
     elif isinstance(attribute_value_i, str) and attribute_value_i != attribute_value_j:
         attribute_value_i = [attribute_value_i, attribute_value_j]
-    return row_i[attribute]
+    return attribute_value_i
