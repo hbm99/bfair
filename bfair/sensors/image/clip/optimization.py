@@ -137,7 +137,7 @@ def get_tokens_pipeline(sampler: LogSampler, attr, attr_values, prefix):
 
 def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
     options = {
-        "__attr__": [attr for _ in attr_values],
+        "__attr__": [value for value in attr_values],
         attr + ": __attr__": [attr + ': ' + value for value in attr_values],
         'This is a person of __attr__ ' + attr: ['This is a person of ' + value + ' ' + attr for value in attr_values],
         'This is a person of ' + attr + ' __attr__': ['This is a person of ' + attr + ' ' + value for value in attr_values],
