@@ -6,3 +6,4 @@
 from .utkface import load_dataset as load_utkface
 from .fairface import load_dataset as load_fairface
 from .multifairface import load_dataset as load_multifairface
+from .noisymultifairface import load_dataset as load_noisymultifairface

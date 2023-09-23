@@ -1,4 +1,10 @@
+from random import randint, sample
+
+import pandas as pd
 from PIL import Image
+
+from bfair.datasets.fairface import (AGE_COLUMN, GENDER_COLUMN, IMAGE_COLUMN,
+                                     RACE_COLUMN)
 
 
 def _get_concat_h_multi_resize(im_list, resample=Image.BICUBIC):
@@ -40,3 +46,24 @@ def merge_attribute_values(attribute, row_i, row_j):
     elif isinstance(attribute_value_i, str) and attribute_value_i != attribute_value_j:
         attribute_value_i = [attribute_value_i, attribute_value_j]
     return attribute_value_i
+
+def create_mixed_dataset(data, size):
+        mixed_data = pd.DataFrame(columns=data.columns)
+        num_rows = len(data)
+        for i in range(size):
+            row_i = data.iloc[i]
+
+            image_list = [row_i[IMAGE_COLUMN]]
+            rows_to_concat = randint(0, 6)
+            for _ in range(rows_to_concat):
+                row_j = data.iloc[randint(0, num_rows - 1)]
+
+                image_list.append(row_j[IMAGE_COLUMN])
+
+                for attribute in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
+                    row_i[attribute] = merge_attribute_values(attribute, row_i, row_j)
+
+            row_i[IMAGE_COLUMN] = concat_images([sample(image_list, randint(1, len(image_list))) for _ in range(3)])
+            mixed_data = mixed_data.append(row_i, ignore_index=True)
+
+        return mixed_data

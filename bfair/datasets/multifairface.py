@@ -1,16 +1,14 @@
-from random import random, sample, randint
 
 import pandas as pd
 
 import datasets as db
-from bfair.datasets.build_tools.multifairface import (concat_images,
-                                                      merge_attribute_values)
+from bfair.datasets.build_tools.multifairface import create_mixed_dataset
 from bfair.datasets.fairface import (_GENDER_MAP, _RACE_MAP, AGE_COLUMN,
                                      GENDER_COLUMN, IMAGE_COLUMN, RACE_COLUMN)
 
 from .base import Dataset
 
-SIZE = 15000
+SIZE = 20000
 
 
 def load_dataset(split_seed=None, **kwargs):
@@ -40,7 +38,9 @@ class MultiFairFaceDataset(Dataset):
         data = data.sample(frac=1, random_state=split_seed).reset_index(drop=True)
 
         # Create a new dataset with mixed images
-        mixed_data = pd.DataFrame(columns=data.columns)
+
+        mixed_data = create_mixed_dataset(data, SIZE)
+        """ mixed_data = pd.DataFrame(columns=data.columns)
         num_rows = len(data)
         for i in range(SIZE):
             row_i = data.iloc[i]
@@ -56,7 +56,7 @@ class MultiFairFaceDataset(Dataset):
                     row_i[attribute] = merge_attribute_values(attribute, row_i, row_j)
                 
             row_i[IMAGE_COLUMN] = concat_images([sample(image_list, randint(1, len(image_list))) for _ in range(3)])
-            mixed_data = mixed_data.append(row_i, ignore_index=True)
+            mixed_data = mixed_data.append(row_i, ignore_index=True) """
         
         return MultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
 
