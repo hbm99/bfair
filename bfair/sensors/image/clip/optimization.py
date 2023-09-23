@@ -205,7 +205,13 @@ def score_fn(X, y, attributes, score_keys):
     return tuple(scores[key] for key in score_keys)
 
 def eval_preprocess(X, y, attributes):
-    X = [[x.lower()] for x in X] # true annotations are one-element lists because of single classification in tagged data
+    new_X = []
+    for x in X:
+        if isinstance(x, str):
+            new_X.append([x.lower()])
+        else:
+            new_X.append([s.lower() for s in x])
+    X = new_X
     y = [[s.lower() for s in lst] for lst in y]
     attributes = [attr.lower() for attr in attributes]
     return X, y, attributes

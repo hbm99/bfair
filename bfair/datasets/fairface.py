@@ -38,6 +38,8 @@ _RACE_MAP = {
     6: SOUTHEAST_ASIAN_VALUE
 }
 
+SIZE = 20000
+
 
 def load_dataset(split_seed=None, **kwargs):
     return FairFaceDataset.load(split_seed=split_seed)
@@ -60,5 +62,5 @@ class FairFaceDataset(Dataset):
             ],
             axis=1
         )
-        return FairFaceDataset(data=data.sample(20000, random_state=split_seed), split_seed=split_seed)
+        return FairFaceDataset(data=data.sample(SIZE, random_state=split_seed), split_seed=split_seed)
 

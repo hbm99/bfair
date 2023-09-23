@@ -10,6 +10,8 @@ from bfair.datasets.fairface import (_GENDER_MAP, _RACE_MAP, AGE_COLUMN,
 
 from .base import Dataset
 
+SIZE = 15000
+
 
 def load_dataset(split_seed=None, **kwargs):
     return MultiFairFaceDataset.load(split_seed=split_seed)
@@ -40,7 +42,7 @@ class MultiFairFaceDataset(Dataset):
         # Create a new dataset with mixed images
         mixed_data = pd.DataFrame(columns=data.columns)
         num_rows = len(data)
-        for i in range(30000):
+        for i in range(SIZE):
             row_i = data.iloc[i]
             
             image_list = [row_i[IMAGE_COLUMN]]
