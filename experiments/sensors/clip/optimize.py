@@ -46,7 +46,7 @@ def setup():
         "--dataset",
         action="append",
         choices=[DB_UTKFACE, DB_FAIRFACE, DB_MULTIFAIRFACE, DB_NOISYMULTIFAIRFACE],
-        default=[DB_NOISYMULTIFAIRFACE],
+        default=[],
     )
     parser.add_argument(
         "--skip",

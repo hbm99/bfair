@@ -31,7 +31,8 @@ class ClipBasedSensor(Sensor):
         
         :param item: images list
         :param List[str] attributes: attribute class values
-        :return: attributed tokens
+        :param str attr_cls: attribute class name
+        :return: labels from attributed tokens
         """
         for tokens in self.tokens_pipeline:
             text = clip.tokenize(tokens).to(self.device)
@@ -40,6 +41,12 @@ class ClipBasedSensor(Sensor):
         i = 0
         for i in range(0, len(item), min(BATCH_SIZE, len(item) - i)):
             images = [self.preprocess(photo) for photo in item[i: min(i + BATCH_SIZE, len(item))]]
+
+            # close batch images for saving memory
+            batch_images = item[i: min(i + BATCH_SIZE, len(item))]
+            for image in batch_images:
+                image.close()
+
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
                 logits_per_image, _ = self.model(image_input, text)
