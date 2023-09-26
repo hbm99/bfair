@@ -8,7 +8,7 @@ from bfair.datasets.fairface import (_GENDER_MAP, _RACE_MAP, AGE_COLUMN,
 
 from .base import Dataset
 
-SIZE = 20000
+SIZE = 10000
 
 
 def load_dataset(split_seed=None, **kwargs):
@@ -35,7 +35,7 @@ class MultiFairFaceDataset(Dataset):
         )
 
         # Shuffle the rows of the dataset
-        data = data.sample(frac=1, random_state=split_seed).reset_index(drop=True)
+        data = data.sample(SIZE, random_state=split_seed).reset_index(drop=True)
 
         # Create a new dataset with mixed images
 

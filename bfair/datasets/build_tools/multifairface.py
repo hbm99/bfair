@@ -54,7 +54,7 @@ def create_mixed_dataset(data, size):
             row_i = data.iloc[i]
 
             image_list = [row_i[IMAGE_COLUMN]]
-            rows_to_concat = randint(0, 6)
+            rows_to_concat = randint(0, 2)
             for _ in range(rows_to_concat):
                 row_j = data.iloc[randint(0, num_rows - 1)]
 

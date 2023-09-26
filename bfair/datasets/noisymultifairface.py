@@ -21,9 +21,10 @@ class NoisyMultiFairFaceDataset(Dataset):
 
     @classmethod
     def load(cls, split_seed = 0):
-        df_ff = load_fairface(split_seed)
+        source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="train")
+        df_ff = pd.DataFrame.from_dict(source_ff)
 
-        source_noisy_dataset = db.load_dataset("cifar100")
+        source_noisy_dataset = db.load_dataset("cifar100", split="train")
         df_noisy = pd.DataFrame.from_dict(source_noisy_dataset)
 
         # Remove undesired classifications (people related)
