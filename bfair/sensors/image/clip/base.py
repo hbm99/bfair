@@ -5,11 +5,13 @@ import clip
 import numpy as np
 import torch
 from autogoal.kb import Matrix, SemanticType
+from PIL import Image
 
 from bfair.sensors.base import Sensor
 from bfair.sensors.text.embedding.filters import Filter
 
 BATCH_SIZE = 64
+
 
 
 class ClipBasedSensor(Sensor):
@@ -40,12 +42,13 @@ class ClipBasedSensor(Sensor):
         results = []
         i = 0
         for i in range(0, len(item), min(BATCH_SIZE, len(item) - i)):
-            images = [self.preprocess(photo) for photo in item[i: min(i + BATCH_SIZE, len(item))]]
 
-            # close batch images for saving memory
-            batch_images = item[i: min(i + BATCH_SIZE, len(item))]
-            for image in batch_images:
-                image.close()
+            images = []
+            for photo_addrs in item[i: min(i + BATCH_SIZE, len(item))]:
+                img = Image.open(photo_addrs)
+                img_preprocess = self.preprocess(img)
+                img.close()
+                images.append(img_preprocess)
 
             image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():

@@ -1,6 +1,8 @@
+
 import pandas as pd
 
 import datasets as db
+from bfair.datasets.build_tools.fairface import save_images_to_disk
 
 from .base import Dataset
 
@@ -40,6 +42,7 @@ _RACE_MAP = {
 }
 
 SIZE = 20000
+IMAGE_DIR = 'datasets/fairface'
 
 
 def load_dataset(split_seed=None, **kwargs):
@@ -63,5 +66,8 @@ class FairFaceDataset(Dataset):
             ],
             axis=1
         )
+
+        save_images_to_disk(data, IMAGE_DIR)
+
         return FairFaceDataset(data=data.sample(SIZE, random_state=split_seed), split_seed=split_seed)
 

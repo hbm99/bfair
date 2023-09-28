@@ -1,9 +1,10 @@
 
-import pandas as pd
-from bfair.datasets.build_tools.multifairface import create_mixed_dataset
+import os
 
-from bfair.datasets.fairface import load_dataset as load_fairface
+import pandas as pd
+
 import datasets as db
+from bfair.datasets.build_tools.fairface import create_mixed_dataset, save_images_to_disk
 
 from .base import Dataset
 
@@ -11,6 +12,7 @@ CIFAR_IMAGE_COLUMN = 'img'
 IMAGE_COLUMN = 'image'
 
 SIZE = 15000
+IMAGE_DIR = 'datasets/noisymultifairface'
 
 
 def load_dataset(split_seed=None, **kwargs):
@@ -35,14 +37,14 @@ class NoisyMultiFairFaceDataset(Dataset):
 
         new_df_noisy[IMAGE_COLUMN] = df_noisy[CIFAR_IMAGE_COLUMN]
 
-        print(new_df_noisy.head(5))
-
         new_df_noisy = pd.concat([df_ff, new_df_noisy])
 
         # Shuffle the rows
         new_df_noisy = new_df_noisy.sample(frac=1, random_state=split_seed).reset_index(drop=True)
 
         mixed_data = create_mixed_dataset(new_df_noisy, SIZE)
+
+        save_images_to_disk(mixed_data, IMAGE_DIR)
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
 

@@ -1,11 +1,13 @@
+import os
 from random import randint, sample
 
 import pandas as pd
 from PIL import Image
 
-from bfair.datasets.fairface import (AGE_COLUMN, GENDER_COLUMN, IMAGE_COLUMN,
-                                     RACE_COLUMN)
-
+GENDER_COLUMN = "gender"
+RACE_COLUMN = 'race'
+IMAGE_COLUMN = 'image'
+AGE_COLUMN = 'age'
 
 def _get_concat_h_multi_resize(im_list, resample=Image.BICUBIC):
     min_height = min(im.height for im in im_list)
@@ -67,3 +69,14 @@ def create_mixed_dataset(data, size):
             mixed_data = mixed_data.append(row_i, ignore_index=True)
 
         return mixed_data
+
+def save_images_to_disk(data, image_dir):
+    # Create the image directory if it doesn't exist
+    os.makedirs(image_dir, exist_ok=True)
+
+    # Save the images to disk and replace the image column with the image paths
+    for i, row in data.iterrows():
+        img = row[IMAGE_COLUMN]
+        img_path = os.path.join(image_dir, f'{i}.jpg')
+        img.save(img_path)
+        data.at[i, IMAGE_COLUMN] = img_path
