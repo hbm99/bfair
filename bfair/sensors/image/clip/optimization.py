@@ -9,10 +9,12 @@ from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.optimization import MACRO_F1, compute_errors, compute_scores
-from bfair.sensors.text.embedding.filters import (BestScoreFilter,
-                                                  IdentityFilter,
-                                                  LargeEnoughFilter,
-                                                  NonEmptyFilter)
+from bfair.sensors.text.embedding.filters import (
+    BestScoreFilter,
+    IdentityFilter,
+    LargeEnoughFilter,
+    NonEmptyFilter,
+)
 
 
 def optimize(
@@ -43,14 +45,14 @@ def optimize(
     )
 
     search = NSPESearch(
-        generator_fn =  partial(
-            generate, 
-            consider_clip_based_sensor = consider_clip_based_sensor, 
-            force_clip_based_sensor = force_clip_based_sensor,
-            attr_cls = attr_cls, 
-            attributes = attributes
+        generator_fn=partial(
+            generate,
+            consider_clip_based_sensor=consider_clip_based_sensor,
+            force_clip_based_sensor=force_clip_based_sensor,
+            attr_cls=attr_cls,
+            attributes=attributes,
         ),
-        fitness_fn = build_fn(
+        fitness_fn=build_fn(
             X_train,
             y_train,
             Matrix,
@@ -69,30 +71,21 @@ def optimize(
 
     if inspect:
         y_pred, counter, scores = evaluate(
-            best_solution,
-            X_train,
-            y_train,
-            attributes,
-            attr_cls,
-            Matrix
+            best_solution, X_train, y_train, attributes, attr_cls, Matrix
         )
         print("Results @ Training ...", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
 
         y_pred, counter, scores = evaluate(
-            best_solution,
-            X_test,
-            y_test,
-            attributes,
-            attr_cls,
-            Matrix
+            best_solution, X_test, y_test, attributes, attr_cls, Matrix
         )
         print("Results @ Testing ....", file=output_stream)
         print(counter, file=output_stream)
         print(scores, file=output_stream)
 
     return best_solution, best_fn, search
+
 
 def get_loggers(log_path=None):
     loggers = [ConsoleLogger()]
@@ -106,18 +99,28 @@ def get_loggers(log_path=None):
     return loggers
 
 
-def generate(sampler: Sampler, consider_clip_based_sensor=True, force_clip_based_sensor=False, *, attr_cls, attributes):
+def generate(
+    sampler: Sampler,
+    consider_clip_based_sensor=True,
+    force_clip_based_sensor=False,
+    *,
+    attr_cls,
+    attributes,
+):
     """
     Generates a new SampleModel object with the given Sampler.
     """
     sampler = LogSampler(sampler)
     sensors = []
-    if force_clip_based_sensor or (consider_clip_based_sensor and sampler.boolean("include-clip-sensor")):
+    if force_clip_based_sensor or (
+        consider_clip_based_sensor and sampler.boolean("include-clip-sensor")
+    ):
         sensor = get_clip_based_sensor(sampler, attr_cls, attributes)
         sensors.append(sensor)
 
     handler = ImageSensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
+
 
 def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
     prefix = "clip-sensor."
@@ -127,27 +130,43 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
 
     sensor = ClipBasedSensor.build(
         filtering_pipeline=filtering_pipeline,
-        tokens_pipeline=tokens_pipeline
+        tokens_pipeline=tokens_pipeline,
     )
     return sensor
+
 
 def get_tokens_pipeline(sampler: LogSampler, attr, attr_values, prefix):
     phrase_sentences = get_phrase(sampler, attr, attr_values, prefix=f"{prefix}phrase")
     return [phrase_sentences]
 
+
 def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
     options = {
         "__attr__": [value for value in attr_values],
-        attr + ": __attr__": [attr + ': ' + value for value in attr_values],
-        'This is a person of __attr__ ' + attr: ['This is a person of ' + value + ' ' + attr for value in attr_values],
-        'This is a person of ' + attr + ' __attr__': ['This is a person of ' + attr + ' ' + value for value in attr_values],
-        'A person of __attr__ ' + attr: ['A person of ' + value + ' ' + attr for value in attr_values],
-        'A person of ' + attr + ' __attr__': ['A person of ' + attr + ' ' + value for value in attr_values],
-        'A __attr__ ' + attr + ' person': ['A ' + value + ' ' + attr + ' person' for value in attr_values],
-        'An image of a person of __attr__ ' + attr: ['An image of a person of ' + value + ' ' + attr for value in attr_values],
+        attr + ": __attr__": [attr + ": " + value for value in attr_values],
+        "This is a person of __attr__ "
+        + attr: ["This is a person of " + value + " " + attr for value in attr_values],
+        "This is a person of "
+        + attr
+        + " __attr__": [
+            "This is a person of " + attr + " " + value for value in attr_values
+        ],
+        "A person of __attr__ "
+        + attr: ["A person of " + value + " " + attr for value in attr_values],
+        "A person of "
+        + attr
+        + " __attr__": ["A person of " + attr + " " + value for value in attr_values],
+        "A __attr__ "
+        + attr
+        + " person": ["A " + value + " " + attr + " person" for value in attr_values],
+        "An image of a person of __attr__ "
+        + attr: [
+            "An image of a person of " + value + " " + attr for value in attr_values
+        ],
     }
     phrase = sampler.choice(list(options.keys()), handle=f"{prefix}-phrase")
     return options[phrase]
+
 
 def get_filtering_pipeline(sampler: LogSampler, prefix):
     filtering_pipeline = []
@@ -156,6 +175,7 @@ def get_filtering_pipeline(sampler: LogSampler, prefix):
     filtering_pipeline.append(filter)
 
     return filtering_pipeline
+
 
 def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
     options = ["LargeEnoughFilter", "BestScoreFilter"]
@@ -187,16 +207,27 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
     else:
         raise ValueError(filter_name)
-    
+
 
 def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, score_func):
     handler: ImageSensorHandler = generated.model
+    # handler.fit(X_train, y_train)
     y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
     score = score_func(y_test, y_pred)
     return score
 
+
 def build_fn(X_test, y_test, stype, attributes, attr_cls, score_func):
-    return partial(fn, X_test=X_test, y_test=y_test, stype=stype, attributes=attributes, attr_cls=attr_cls, score_func=score_func)
+    return partial(
+        fn,
+        X_test=X_test,
+        y_test=y_test,
+        stype=stype,
+        attributes=attributes,
+        attr_cls=attr_cls,
+        score_func=score_func,
+    )
+
 
 def score_fn(X, y, attributes, score_keys):
     X, y, attributes = eval_preprocess(X, y, attributes)
@@ -204,17 +235,21 @@ def score_fn(X, y, attributes, score_keys):
     scores = compute_scores(errors)
     return tuple(scores[key] for key in score_keys)
 
+
 def eval_preprocess(X, y, attributes):
     new_X = []
     for x in X:
-        if isinstance(x, str):
+        if isinstance(x, str) and x in attributes:
             new_X.append([x.lower()])
+        elif isinstance(x, str) and x not in attributes:
+            new_X.append([])
         else:
             new_X.append([s.lower() for s in x])
     X = new_X
     y = [[s.lower() for s in lst] for lst in y]
     attributes = [attr.lower() for attr in attributes]
     return X, y, attributes
+
 
 def build_score_fn(attributes, score_keys):
     return partial(score_fn, attributes=attributes, score_keys=score_keys)

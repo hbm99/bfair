@@ -1,28 +1,38 @@
-
 import argparse
 import traceback
 from pathlib import Path
 
 import pandas as pd
 
-from bfair.datasets import load_fairface, load_utkface, load_multifairface, load_noisymultifairface
+from bfair.datasets import (
+    load_fairface,
+    load_utkface,
+    load_multifairface,
+    load_noisymultifairface,
+)
 from bfair.datasets.fairface import GENDER_VALUES as FF_GENDER_VALUES
 from bfair.datasets.fairface import RACE_VALUES as FF_RACE_VALUES
 from bfair.datasets.utkface import GENDER_VALUES as UTKF_GENDER_VALUES
 from bfair.datasets.utkface import RACE_VALUES as UTKF_RACE_VALUES
 from bfair.sensors import P_GENDER, P_RACE
 from bfair.sensors.image.clip.optimization import optimize
-from bfair.sensors.optimization import (MACRO_ACC, MACRO_F1, MACRO_PRECISION,
-                                        MACRO_RECALL, MICRO_ACC)
+from bfair.sensors.optimization import (
+    MACRO_ACC,
+    MACRO_F1,
+    MACRO_PRECISION,
+    MACRO_RECALL,
+    MICRO_ACC,
+)
 
-DB_UTKFACE = 'utkface'
-DB_FAIRFACE = 'fairface'
-DB_MULTIFAIRFACE = 'multifairface'
-DB_NOISYMULTIFAIRFACE = 'noisymultifairface'
+DB_UTKFACE = "utkface"
+DB_FAIRFACE = "fairface"
+DB_MULTIFAIRFACE = "multifairface"
+DB_NOISYMULTIFAIRFACE = "noisymultifairface"
 
 SENSOR_CLIPBASED = "clipbased"
 
-IMAGE_COLUMN = 'image'
+IMAGE_COLUMN = "image"
+
 
 def setup():
     parser = argparse.ArgumentParser()
@@ -57,9 +67,7 @@ def setup():
     parser.add_argument(
         "--force",
         action="append",
-        choices=[
-            SENSOR_CLIPBASED
-        ],
+        choices=[SENSOR_CLIPBASED],
         default=[],
     )
 
@@ -91,10 +99,10 @@ def main():
 
         if DB_MULTIFAIRFACE in args.dataset:
             dataset = load_multifairface(split_seed=0)
-        
+
         if DB_NOISYMULTIFAIRFACE in args.dataset:
             dataset = load_noisymultifairface(split_seed=0)
-        
+
         images_for_training.append(dataset.data[IMAGE_COLUMN])
         annotations_for_training.append(dataset.data[attr_cls])
         images_for_testing.append(dataset.test[IMAGE_COLUMN])
