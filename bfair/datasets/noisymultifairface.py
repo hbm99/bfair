@@ -21,7 +21,7 @@ from .base import Dataset
 CIFAR_IMAGE_COLUMN = "img"
 IMAGE_COLUMN = "image"
 
-SIZE = 10
+SIZE = 50000
 IMAGE_DIR = "datasets/noisymultifairface"
 
 

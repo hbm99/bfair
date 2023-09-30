@@ -56,7 +56,7 @@ def setup():
         "--dataset",
         action="append",
         choices=[DB_UTKFACE, DB_FAIRFACE, DB_MULTIFAIRFACE, DB_NOISYMULTIFAIRFACE],
-        default=[DB_NOISYMULTIFAIRFACE],
+        default=[],
     )
     parser.add_argument(
         "--skip",
@@ -88,8 +88,8 @@ def main():
         annotations_for_training = []
         images_for_testing = []
         annotations_for_testing = []
-        attr_cls = P_GENDER
-        values = FF_GENDER_VALUES
+        attr_cls = P_RACE
+        values = FF_RACE_VALUES
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)

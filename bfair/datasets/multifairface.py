@@ -16,7 +16,7 @@ from bfair.datasets.fairface import (
 
 from .base import Dataset
 
-SIZE = 10
+SIZE = 50000
 IMAGE_DIR = "datasets/multifairface"
 
 
@@ -45,7 +45,7 @@ class MultiFairFaceDataset(Dataset):
         )
 
         # Shuffle the rows of the dataset
-        data = data.sample(SIZE, random_state=split_seed).reset_index(drop=True)
+        data = data.sample(frac=1, random_state=split_seed).reset_index(drop=True)
 
         # Create a new dataset with mixed images
         mixed_data = create_mixed_dataset(data, SIZE)
