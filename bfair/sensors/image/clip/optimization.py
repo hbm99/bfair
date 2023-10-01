@@ -1,9 +1,15 @@
 from functools import partial
 from statistics import mean
+from typing import List
 
+import clip
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+import torch
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
 from autogoal.search import ConsoleLogger, NSPESearch
+from PIL import Image
 
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
@@ -15,6 +21,8 @@ from bfair.sensors.text.embedding.filters import (
     LargeEnoughFilter,
     NonEmptyFilter,
 )
+
+BATCH_SIZE = 64
 
 
 def optimize(
@@ -51,10 +59,12 @@ def optimize(
             force_clip_based_sensor=force_clip_based_sensor,
             attr_cls=attr_cls,
             attributes=attributes,
+            X_train=X_train,
+            y_train=y_train,
         ),
         fitness_fn=build_fn(
-            X_train,
-            y_train,
+            X_test,
+            y_test,
             Matrix,
             attributes,
             attr_cls,
@@ -106,6 +116,8 @@ def generate(
     *,
     attr_cls,
     attributes,
+    X_train,
+    y_train,
 ):
     """
     Generates a new SampleModel object with the given Sampler.
@@ -115,21 +127,38 @@ def generate(
     if force_clip_based_sensor or (
         consider_clip_based_sensor and sampler.boolean("include-clip-sensor")
     ):
-        sensor = get_clip_based_sensor(sampler, attr_cls, attributes)
+        sensor = get_clip_based_sensor(sampler, attr_cls, attributes, X_train, y_train)
         sensors.append(sensor)
 
     handler = ImageSensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
 
 
-def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
+def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, X_train, y_train):
     prefix = "clip-sensor."
 
-    filtering_pipeline = get_filtering_pipeline(sampler, prefix)
     tokens_pipeline = get_tokens_pipeline(sampler, attr_cls, attributes, prefix)
+
+    selection = sampler.choice(["filter", "learner"], handle=f"{prefix}selection")
+
+    filtering_pipeline = None
+    learner = None
+    if selection == "filter":
+        filtering_pipeline = get_filtering_pipeline(sampler, prefix)
+    elif selection == "learner":
+        learner = get_learning_pipeline(
+            sampler,
+            prefix,
+            tokens_pipeline,
+            X_train,
+            y_train,
+            attributes=attributes,
+            attr_cls=attr_cls,
+        )
 
     sensor = ClipBasedSensor.build(
         filtering_pipeline=filtering_pipeline,
+        learner=learner,
         tokens_pipeline=tokens_pipeline,
     )
     return sensor
@@ -166,6 +195,97 @@ def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
     }
     phrase = sampler.choice(list(options.keys()), handle=f"{prefix}-phrase")
     return options[phrase]
+
+
+def get_learning_pipeline(
+    sampler: LogSampler, prefix, tokens_pipeline, X_train, y_train, attributes, attr_cls
+):
+    image_list = X_train
+
+    # get labels for each image
+    image_labels = clip_sensor_call(image_list, attributes, attr_cls, tokens_pipeline)
+
+    # prepare data
+    X = []
+    y = []
+    for i, (_, clip_logits) in enumerate(zip(image_list, image_labels)):
+        X.append([extended_clip_logits[1] for extended_clip_logits in clip_logits[1]])
+        y_i = y_train.values[i]
+        if y_i == "":
+            y.append([])
+        elif isinstance(y_i, str):
+            y.append([y_i])
+        else:
+            y.append(y_train.values[i])
+
+    X = np.array(X).reshape(len(X), -1)
+    y = np.array(y)
+
+    models = ["logistic_regression"]
+
+    model_name = sampler.choice(models, handle=f"{prefix}-model")
+    if model_name == "logistic_regression":
+        # train logistic regression model
+        model = LogisticRegression(random_state=0).fit(X, y)
+
+    return model
+
+
+def clip_sensor_call(item, attributes: List[str], attr_cls: str, tokens_pipeline):
+    """
+    Calls a ClipBasedSensor execution.
+
+    :param item: images list
+    :param List[str] attributes: attribute class values
+    :param str attr_cls: attribute class name
+    :return: labels from attributed tokens
+    """
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    clip_model, preprocess = clip.load("ViT-B/32", device)
+
+    for tokens in tokens_pipeline:
+        text = clip.tokenize(tokens).to(device)
+
+    results = []
+    i = 0
+    for i in range(0, len(item), min(BATCH_SIZE, len(item) - i)):
+        images = []
+        for photo_addrs in item[i : min(i + BATCH_SIZE, len(item))]:
+            img = Image.open(photo_addrs)
+            img_preprocess = preprocess(img)
+            img.close()
+            images.append(img_preprocess)
+
+        image_input = torch.tensor(np.stack(images)).to(device)
+        with torch.no_grad():
+            logits_per_image, _ = clip_model(image_input, text)
+
+            batch_probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+
+            attribute_probs = [[] for _ in range(len(batch_probs))]
+            for k in range(len(batch_probs)):
+                image_probs = batch_probs[k]
+                for j in range(len(attributes)):
+                    attribute_probs[k].append((attributes[j], image_probs[j]))
+
+            attributed_tokens = []
+            for h in range(i, min(i + BATCH_SIZE, len(item))):
+                attributed_tokens.append(
+                    (
+                        "image_" + str(i + h % BATCH_SIZE),
+                        attribute_probs[h % BATCH_SIZE],
+                    )
+                )
+
+            results.append(attributed_tokens)
+
+    flatten_results = []
+    for batch in results:
+        for result in batch:
+            flatten_results.append(result)
+
+    return flatten_results
 
 
 def get_filtering_pipeline(sampler: LogSampler, prefix):
@@ -211,7 +331,6 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
 def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, score_func):
     handler: ImageSensorHandler = generated.model
-    # handler.fit(X_train, y_train)
     y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
     score = score_func(y_test, y_pred)
     return score
