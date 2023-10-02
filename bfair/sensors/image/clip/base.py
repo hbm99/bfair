@@ -24,7 +24,7 @@ class ClipBasedSensor(Sensor):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
         self.filtering_pipeline = filtering_pipeline
-        self.learner = learner
+        self.learner, self.multi_label_binarizer = learner
         self.tokens_pipeline = tokens_pipeline
 
     @classmethod
@@ -93,7 +93,9 @@ class ClipBasedSensor(Sensor):
         X = []
         for labels in results:
             X.append([extended_labels[1] for extended_labels in labels[1]])
-        return list(self.learner.predict(X))
+        y_pred_transformed = self.learner.predict(X)
+        y_pred = self.multi_label_binarizer.inverse_transform(y_pred_transformed)
+        return list(y_pred)
 
     def get_filtered(self, results):
         attributed_tokens = []

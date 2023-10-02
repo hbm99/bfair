@@ -4,12 +4,14 @@ from typing import List
 
 import clip
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 import torch
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
 from autogoal.search import ConsoleLogger, NSPESearch
 from PIL import Image
+from sklearn.linear_model import LogisticRegression
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
@@ -139,7 +141,7 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, X_train, y_
 
     tokens_pipeline = get_tokens_pipeline(sampler, attr_cls, attributes, prefix)
 
-    selection = sampler.choice(["filter", "learner"], handle=f"{prefix}selection")
+    selection = sampler.choice(["learner"], handle=f"{prefix}selection")  # "filter",
 
     filtering_pipeline = None
     learner = None
@@ -193,7 +195,7 @@ def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
             "An image of a person of " + value + " " + attr for value in attr_values
         ],
     }
-    phrase = sampler.choice(list(options.keys()), handle=f"{prefix}-phrase")
+    phrase = sampler.choice(list(options.keys()), handle=f"{prefix}")
     return options[phrase]
 
 
@@ -212,23 +214,28 @@ def get_learning_pipeline(
         X.append([extended_clip_logits[1] for extended_clip_logits in clip_logits[1]])
         y_i = y_train.values[i]
         if y_i == "":
-            y.append([])
+            y.append({})
         elif isinstance(y_i, str):
-            y.append([y_i])
+            y.append({y_i})
         else:
-            y.append(y_train.values[i])
+            y.append(set(y_i))
 
     X = np.array(X).reshape(len(X), -1)
-    y = np.array(y)
+
+    mlb = MultiLabelBinarizer()
+    mlb.fit(y)
+    y_transformed = mlb.transform(y)
 
     models = ["logistic_regression"]
 
-    model_name = sampler.choice(models, handle=f"{prefix}-model")
+    model_name = sampler.choice(models, handle=f"{prefix}model")
     if model_name == "logistic_regression":
         # train logistic regression model
-        model = LogisticRegression(random_state=0).fit(X, y)
+        base_model = LogisticRegression(random_state=0)
 
-    return model
+    model = MultiOutputClassifier(base_model).fit(X, y_transformed)
+
+    return model, mlb
 
 
 def clip_sensor_call(item, attributes: List[str], attr_cls: str, tokens_pipeline):
