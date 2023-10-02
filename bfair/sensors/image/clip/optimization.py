@@ -141,7 +141,7 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, X_train, y_
 
     tokens_pipeline = get_tokens_pipeline(sampler, attr_cls, attributes, prefix)
 
-    selection = sampler.choice(["learner"], handle=f"{prefix}selection")  # "filter",
+    selection = sampler.choice(["filter", "learner"], handle=f"{prefix}selection")
 
     filtering_pipeline = None
     learner = None
@@ -230,7 +230,6 @@ def get_learning_pipeline(
 
     model_name = sampler.choice(models, handle=f"{prefix}model")
     if model_name == "logistic_regression":
-        # train logistic regression model
         base_model = LogisticRegression(random_state=0)
 
     model = MultiOutputClassifier(base_model).fit(X, y_transformed)
