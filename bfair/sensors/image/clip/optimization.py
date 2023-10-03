@@ -1,17 +1,23 @@
 from functools import partial
-from statistics import mean
 from typing import List
 
 import clip
 import numpy as np
+
+
 import torch
 from autogoal.kb import Matrix
 from autogoal.sampling import Sampler
 from autogoal.search import ConsoleLogger, NSPESearch
 from PIL import Image
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.multioutput import MultiOutputClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
 
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
@@ -21,10 +27,18 @@ from bfair.sensors.text.embedding.filters import (
     BestScoreFilter,
     IdentityFilter,
     LargeEnoughFilter,
-    NonEmptyFilter,
 )
 
 BATCH_SIZE = 64
+
+MODELS = {
+    "logistic_regression": LogisticRegression,
+    "decision_tree": DecisionTreeClassifier,
+    "random_forest": RandomForestClassifier,
+    "gradient_boosting_classifier": GradientBoostingClassifier,
+    "svm": SVC,
+    "knn": KNeighborsClassifier,
+}
 
 
 def optimize(
@@ -226,11 +240,9 @@ def get_learning_pipeline(
     mlb.fit(y)
     y_transformed = mlb.transform(y)
 
-    models = ["logistic_regression"]
+    model_name = sampler.choice(list(MODELS.keys()), handle=f"{prefix}model")
 
-    model_name = sampler.choice(models, handle=f"{prefix}model")
-    if model_name == "logistic_regression":
-        base_model = LogisticRegression(random_state=0)
+    base_model = MODELS[model_name]()
 
     model = MultiOutputClassifier(base_model).fit(X, y_transformed)
 
