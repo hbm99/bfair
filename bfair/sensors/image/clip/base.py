@@ -24,7 +24,7 @@ class ClipBasedSensor(Sensor):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load("ViT-B/32", self.device)
         self.filtering_pipeline = filtering_pipeline
-        self.learner, self.multi_label_binarizer = learner
+        self.learner, self.multi_label_binarizer = learner if learner else (None, None)
         self.tokens_pipeline = tokens_pipeline
 
     @classmethod
