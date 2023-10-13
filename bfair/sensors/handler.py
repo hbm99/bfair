@@ -2,6 +2,8 @@ from typing import Sequence, List, Callable, Tuple
 from bfair.sensors.base import Sensor
 from autogoal.kb import SemanticType
 
+from bfair.sensors.image.clip.base import ClipBasedSensor
+
 
 class SensorHandler:
     def __init__(
@@ -57,7 +59,8 @@ class SensorHandler:
             return SemanticType.infer(item)
         except ValueError:
             return None
-        
+
+
 class ImageSensorHandler(SensorHandler):
     def forward(
         self,
@@ -76,6 +79,11 @@ class ImageSensorHandler(SensorHandler):
             merged_annotations = self.merge(image_annotations)
             final.append(merged_annotations)
         return final
+
+    def fit(self, X_train, y_train, attributes, attr_cls):
+        for sensor in self.sensors:
+            if isinstance(sensor, ClipBasedSensor):
+                sensor.fit(X_train, y_train, attributes, attr_cls)
 
 
 class UnionMerge:
