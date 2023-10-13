@@ -349,6 +349,7 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
 
 def fn(generated: SampleModel, X_test, y_test, stype, attributes, attr_cls, score_func):
     handler: ImageSensorHandler = generated.model
+    # handler.fit(X_train, y_train)
     y_pred = handler.annotate(X_test, stype, attributes, attr_cls)
     score = score_func(y_test, y_pred)
     return score
