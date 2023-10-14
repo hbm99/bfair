@@ -2,6 +2,8 @@ from typing import List, Sequence, Set, Union
 
 import clip
 import numpy as np
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import KFold, cross_validate
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
 import torch
@@ -100,12 +102,44 @@ class ClipBasedSensor(Sensor):
         X = np.array(X).reshape(len(X), -1)
 
         mlb = MultiLabelBinarizer()
-        mlb.fit(y)
-        y_transformed = mlb.transform(y)
-
         self.multi_label_binarizer = mlb
 
-        self.learner = MultiOutputClassifier(self.learner).fit(X, y_transformed)
+        # Define the outer and inner cross-validation strategies
+        outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+        inner_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+        best_val_score = 0
+
+        for train_index, val_index in outer_cv.split(X, y):
+            X_train, X_val = X[train_index], X[val_index]
+
+            mlb.fit(y)
+            y_transformed = mlb.transform(y)
+
+            y_train_transformed, y_val_transformed = (
+                y_transformed[train_index],
+                y_transformed[val_index],
+            )
+
+            if not isinstance(self.learner, MultiOutputClassifier):
+                model = MultiOutputClassifier(self.learner())
+            else:
+                model = self.learner
+
+            cv_results = cross_validate(
+                model,
+                X_train,
+                y_train_transformed,
+                cv=inner_cv,
+                scoring="accuracy",
+                return_estimator=True,
+            )
+
+            for estimator in cv_results["estimator"]:
+                val_score = accuracy_score(y_val_transformed, estimator.predict(X_val))
+                if val_score > best_val_score:
+                    best_val_score = val_score
+                    self.learner = estimator
 
     def basic_call(self, item, attributes: List[str], attr_cls: str):
         """

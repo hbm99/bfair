@@ -196,7 +196,7 @@ def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
 
 def get_learning_pipeline(sampler: LogSampler, prefix):
     model_name = sampler.choice(list(MODELS.keys()), handle=f"{prefix}model")
-    return MODELS[model_name]()
+    return MODELS[model_name]
 
 
 def get_filtering_pipeline(sampler: LogSampler, prefix):

@@ -41,7 +41,7 @@ def setup():
     parser.add_argument("--eval-timeout", type=int, default=None)
     parser.add_argument("--memory", type=int, default=None)
     parser.add_argument("--popsize", type=int, default=50)
-    parser.add_argument("--global-timeout", type=int, default=20000)
+    parser.add_argument("--global-timeout", type=int, default=600)
     parser.add_argument("--token", default=None)
     parser.add_argument("--channel", default=None)
     parser.add_argument("--output", default="")
