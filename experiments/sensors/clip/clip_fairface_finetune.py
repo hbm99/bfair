@@ -231,8 +231,6 @@ EPOCH = 20
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 
-"""Splitting dataset"""
-
 from torch.utils.data import Dataset, DataLoader
 
 train_df_temp = mixed_data.sample(frac=0.8)
@@ -262,20 +260,11 @@ class NoisyFFDataset(Dataset):
 train_dataset = NoisyFFDataset(train_df, preprocess)
 validation_dataset = NoisyFFDataset(validation_df, preprocess)
 
-
-def my_collate_fn(data):
-    return tuple(zip(*data))
-
-
-train_dataloader = DataLoader(
-    train_dataset, batch_size=BATCH_SIZE, shuffle=True
-)  # , collate_fn= my_collate_fn)
+train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 validation_dataloader = DataLoader(
     validation_dataset, batch_size=BATCH_SIZE, shuffle=False
-)  # , collate_fn= my_collate_fn)
+)
 
-
-"""Preparing finetuning"""
 
 attributes_queries = {}
 
@@ -298,6 +287,7 @@ race_texts = clip.tokenize(race_texts).to(device)
 
 from torch import nn, optim
 from tqdm import tqdm
+import numpy as np
 
 
 # https://github.com/openai/CLIP/issues/57
@@ -307,29 +297,31 @@ def convert_models_to_fp32(model):
         p.grad.data = p.grad.data.float()
 
 
+def safe_division(numerator, denominator, default=0):
+    return numerator / denominator if denominator else default
+
+
 if device == "cpu":
     model.float()
 
-loss_img = nn.CrossEntropyLoss()
-loss_txt = nn.CrossEntropyLoss()
+loss_img = nn.BCELoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-5)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(
     optimizer, len(train_dataloader) * EPOCH
 )
 
-"""Finetuning"""
 
-best_gender_te_loss = 1e5
+best_gender_mac_acc = -1
 best_gender_ep = -1
 GENDER_PLACE = 1
 
-best_race_te_loss = 1e5
+best_race_mac_acc = -1
 best_race_ep = -1
 RACE_PLACE = 2
 
 for epoch in range(EPOCH):
     print(
-        f"running epoch {epoch}, GENDER: best test loss {best_gender_te_loss} after epoch {best_gender_ep}, RACE: best test loss {best_race_te_loss} after epoch {best_race_ep}"
+        f"running epoch {epoch}, GENDER: best test macro-accuracy {best_gender_mac_acc} after epoch {best_gender_ep}, RACE: best test macro-accuracy {best_race_mac_acc} after epoch {best_race_ep}"
     )
     step = 0
     gender_tr_loss = 0
@@ -346,7 +338,9 @@ for epoch in range(EPOCH):
         images = images.to(device)
 
         gender_logits_per_image, _ = model(images, gender_texts)
+        gender_batch_probs = gender_logits_per_image.softmax(dim=-1).cpu()
         race_logits_per_image, _ = model(images, race_texts)
+        race_batch_probs = race_logits_per_image.softmax(dim=-1).cpu()
 
         gender_ground_truth = torch.zeros((BATCH_SIZE, len(GENDER_VALUES))).to(device)
         race_ground_truth = torch.zeros((BATCH_SIZE, len(RACE_VALUES))).to(device)
@@ -372,11 +366,11 @@ for epoch in range(EPOCH):
             for race_truth_idx in race_truth_idxs:
                 race_ground_truth[i, race_truth_idx] = 1
 
-        gender_total_loss = loss_img(gender_logits_per_image, gender_ground_truth)
+        gender_total_loss = loss_img(gender_batch_probs, gender_ground_truth)
         gender_total_loss.backward()
         gender_tr_loss += gender_total_loss.item()
 
-        race_total_loss = loss_img(race_logits_per_image, race_ground_truth)
+        race_total_loss = loss_img(race_batch_probs, race_ground_truth)
         race_total_loss.backward()
         race_tr_loss += race_total_loss.item()
 
@@ -399,15 +393,12 @@ for epoch in range(EPOCH):
     gender_tr_loss /= step
     race_tr_loss /= step
 
-    step = 0
-
-    gender_te_loss = 0
-    race_te_loss = 0
+    gender_ac_counter = {}
+    race_ac_counter = {}
     with torch.no_grad():
         model.eval()
         val_pbar = tqdm(validation_dataloader, leave=False)
         for batch in val_pbar:
-            step += 1
             images = batch[0]
 
             images = images.to(device)
@@ -443,32 +434,64 @@ for epoch in range(EPOCH):
                 for race_truth_idx in race_truth_idxs:
                     race_ground_truth[i, race_truth_idx] = 1
 
-            gender_total_loss = loss_img(gender_logits_per_image, gender_ground_truth)
-            gender_te_loss += gender_total_loss.item()
-
-            race_total_loss = loss_img(race_logits_per_image, race_ground_truth)
-            race_te_loss += race_total_loss.item()
-
-            val_pbar.set_description(
-                f"GENDER: test batchCE: {gender_total_loss.item()}", refresh=True
+            gender_batch_probs = (
+                gender_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
             )
-            val_pbar.set_description(
-                f"RACE: test batchCE: {race_total_loss.item()}", refresh=True
+            rounded_g_b_p = np.round(gender_batch_probs)
+
+            gender_ground_truth = gender_ground_truth.tolist()[0]
+            rounded_g_b_p = rounded_g_b_p.tolist()[0]
+
+            true_ann = gender_ground_truth
+            pred_ann = rounded_g_b_p
+
+            true_ann_key = ""
+            for item in true_ann:
+                true_ann_key += str(int(item))
+
+            correct, total = gender_ac_counter.get(true_ann_key, (0, 0))
+            equal = int(true_ann == pred_ann)
+            gender_ac_counter[true_ann_key] = (correct + equal, total + 1)
+
+            race_batch_probs = (
+                race_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
             )
+            rounded_r_b_p = np.round(race_batch_probs)
 
-        gender_te_loss /= step
-        race_te_loss /= step
+            race_ground_truth = race_ground_truth.tolist()[0]
+            rounded_r_b_p = rounded_r_b_p.tolist()[0]
 
-    if gender_te_loss <= best_gender_te_loss and race_te_loss <= best_race_te_loss:
-        best_gender_te_loss = gender_te_loss
-        best_race_te_loss = race_te_loss
+            true_ann = race_ground_truth
+            pred_ann = rounded_r_b_p
+
+            true_ann_key = ""
+            for item in true_ann:
+                true_ann_key += str(int(item))
+
+            correct, total = race_ac_counter.get(true_ann_key, (0, 0))
+            equal = int(true_ann == pred_ann)
+            race_ac_counter[true_ann_key] = (correct + equal, total + 1)
+        
+    total_accuracy = 0
+    for value, (correct, total) in gender_ac_counter.items():
+        total_accuracy += safe_division(correct, total)
+    gender_macro_acc = safe_division(total_accuracy, len(gender_ac_counter))
+
+    total_accuracy = 0
+    for value, (correct, total) in race_ac_counter.items():
+        total_accuracy += safe_division(correct, total)
+    race_macro_acc = safe_division(total_accuracy, len(race_ac_counter))
+
+    if gender_macro_acc >= best_gender_mac_acc and race_macro_acc >= best_race_mac_acc:
+        best_gender_mac_acc = gender_macro_acc
+        best_race_mac_acc = race_macro_acc
 
         best_gender_ep = epoch
         best_race_ep = epoch
 
         best_model = model
     print(
-        f"epoch {epoch}, gender_tr_loss {gender_tr_loss}, gender_te_loss {gender_te_loss}, race_tr_loss {race_tr_loss}, race_te_loss {race_te_loss}"
+        f"epoch {epoch}, gender_tr_loss {gender_tr_loss}, gender_macro_acc {gender_macro_acc}, race_tr_loss {race_tr_loss}, race_macro_acc {race_macro_acc}"
     )
 
 torch.save(best_model.cpu().state_dict(), "best_model.pt")
