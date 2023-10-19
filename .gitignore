@@ -6,6 +6,9 @@
 # Sensor experiments
 results/
 
+# Models
+*.pt
+
 ### Linux ###
 *~
 

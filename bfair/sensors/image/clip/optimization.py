@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 from bfair.methods.autogoal.ensembling.sampling import LogSampler, SampleModel
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
+from bfair.sensors.image.clip.finetuned_clip.base import FinetunedClipSensor
 from bfair.sensors.optimization import MACRO_F1, compute_errors, compute_scores
 from bfair.sensors.text.embedding.filters import (
     BestScoreFilter,
@@ -153,7 +154,7 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
     elif selection == "learner":
         learner = get_learning_pipeline(sampler, prefix)
 
-    sensor = ClipBasedSensor.build(
+    sensor = FinetunedClipSensor.build(
         filtering_pipeline=filtering_pipeline,
         learner=learner,
         tokens_pipeline=tokens_pipeline,
