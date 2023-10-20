@@ -44,7 +44,7 @@ _RACE_MAP = {
     6: SOUTHEAST_ASIAN_VALUE,
 }
 
-SIZE = 20000
+SIZE = 80000
 IMAGE_DIR = "datasets/fairface"
 
 

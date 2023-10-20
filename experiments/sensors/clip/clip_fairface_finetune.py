@@ -56,7 +56,7 @@ _RACE_MAP = {
     6: SOUTHEAST_ASIAN_VALUE,
 }
 
-SIZE = 20000
+SIZE = 5000
 
 """utils"""
 
@@ -226,7 +226,7 @@ import clip
 
 
 BATCH_SIZE = 1
-EPOCH = 20
+EPOCH = 10
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -304,7 +304,7 @@ def safe_division(numerator, denominator, default=0):
 if device == "cpu":
     model.float()
 
-loss_img = nn.BCELoss()
+loss_img = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-5)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(
     optimizer, len(train_dataloader) * EPOCH
@@ -338,9 +338,7 @@ for epoch in range(EPOCH):
         images = images.to(device)
 
         gender_logits_per_image, _ = model(images, gender_texts)
-        gender_batch_probs = gender_logits_per_image.softmax(dim=-1).cpu()
         race_logits_per_image, _ = model(images, race_texts)
-        race_batch_probs = race_logits_per_image.softmax(dim=-1).cpu()
 
         gender_ground_truth = torch.zeros((BATCH_SIZE, len(GENDER_VALUES))).to(device)
         race_ground_truth = torch.zeros((BATCH_SIZE, len(RACE_VALUES))).to(device)
@@ -366,11 +364,11 @@ for epoch in range(EPOCH):
             for race_truth_idx in race_truth_idxs:
                 race_ground_truth[i, race_truth_idx] = 1
 
-        gender_total_loss = loss_img(gender_batch_probs, gender_ground_truth)
+        gender_total_loss = loss_img(gender_logits_per_image, gender_ground_truth)
         gender_total_loss.backward()
         gender_tr_loss += gender_total_loss.item()
 
-        race_total_loss = loss_img(race_batch_probs, race_ground_truth)
+        race_total_loss = loss_img(race_logits_per_image, race_ground_truth)
         race_total_loss.backward()
         race_tr_loss += race_total_loss.item()
 
@@ -434,9 +432,10 @@ for epoch in range(EPOCH):
                 for race_truth_idx in race_truth_idxs:
                     race_ground_truth[i, race_truth_idx] = 1
 
-            gender_batch_probs = (
-                gender_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
-            )
+            # gender_batch_probs = (
+            #     gender_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
+            # )
+            gender_batch_probs = torch.sigmoid(gender_logits_per_image).numpy()
             rounded_g_b_p = np.round(gender_batch_probs)
 
             gender_ground_truth = gender_ground_truth.tolist()[0]
@@ -453,9 +452,10 @@ for epoch in range(EPOCH):
             equal = int(true_ann == pred_ann)
             gender_ac_counter[true_ann_key] = (correct + equal, total + 1)
 
-            race_batch_probs = (
-                race_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
-            )
+            # race_batch_probs = (
+            #     race_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
+            # )
+            race_batch_probs = torch.sigmoid(race_logits_per_image).numpy()
             rounded_r_b_p = np.round(race_batch_probs)
 
             race_ground_truth = race_ground_truth.tolist()[0]
