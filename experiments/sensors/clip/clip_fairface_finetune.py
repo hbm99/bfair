@@ -435,7 +435,9 @@ for epoch in range(EPOCH):
             # gender_batch_probs = (
             #     gender_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
             # )
-            gender_batch_probs = torch.sigmoid(gender_logits_per_image).numpy()
+            gender_batch_probs = (
+                torch.sigmoid(gender_logits_per_image).to(device).numpy()
+            )
             rounded_g_b_p = np.round(gender_batch_probs)
 
             gender_ground_truth = gender_ground_truth.tolist()[0]
@@ -455,7 +457,7 @@ for epoch in range(EPOCH):
             # race_batch_probs = (
             #     race_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
             # )
-            race_batch_probs = torch.sigmoid(race_logits_per_image).numpy()
+            race_batch_probs = torch.sigmoid(race_logits_per_image).to(device).numpy()
             rounded_r_b_p = np.round(race_batch_probs)
 
             race_ground_truth = race_ground_truth.tolist()[0]
@@ -471,7 +473,7 @@ for epoch in range(EPOCH):
             correct, total = race_ac_counter.get(true_ann_key, (0, 0))
             equal = int(true_ann == pred_ann)
             race_ac_counter[true_ann_key] = (correct + equal, total + 1)
-        
+
     total_accuracy = 0
     for value, (correct, total) in gender_ac_counter.items():
         total_accuracy += safe_division(correct, total)
