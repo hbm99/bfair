@@ -169,26 +169,26 @@ def get_tokens_pipeline(sampler: LogSampler, attr, attr_values, prefix):
 
 def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
     options = {
-        "__attr__": [value for value in attr_values],
-        attr + ": __attr__": [attr + ": " + value for value in attr_values],
+        "__attr__": [value.lower() for value in attr_values],
+        attr + ": __attr__": [attr + ": " + value.lower() for value in attr_values],
         "This is a person of __attr__ "
-        + attr: ["This is a person of " + value + " " + attr for value in attr_values],
+        + attr: ["This is a person of " + value.lower() + " " + attr for value in attr_values],
         "This is a person of "
         + attr
         + " __attr__": [
-            "This is a person of " + attr + " " + value for value in attr_values
+            "This is a person of " + attr + " " + value.lower() for value in attr_values
         ],
         "A person of __attr__ "
-        + attr: ["A person of " + value + " " + attr for value in attr_values],
+        + attr: ["A person of " + value.lower() + " " + attr for value in attr_values],
         "A person of "
         + attr
-        + " __attr__": ["A person of " + attr + " " + value for value in attr_values],
+        + " __attr__": ["A person of " + attr + " " + value.lower() for value in attr_values],
         "A __attr__ "
         + attr
-        + " person": ["A " + value + " " + attr + " person" for value in attr_values],
+        + " person": ["A " + value.lower() + " " + attr + " person" for value in attr_values],
         "An image of a person of __attr__ "
         + attr: [
-            "An image of a person of " + value + " " + attr for value in attr_values
+            "An image of a person of " + value.lower() + " " + attr for value in attr_values
         ],
     }
     phrase = sampler.choice(list(options.keys()), handle=f"{prefix}")

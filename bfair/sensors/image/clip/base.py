@@ -161,14 +161,33 @@ class ClipBasedSensor(Sensor):
             for photo_addrs in item[i : min(i + BATCH_SIZE, len(item))]:
                 img = Image.open(photo_addrs)
                 img_preprocess = self.preprocess(img)
+                print(img_preprocess.shape)
                 img.close()
                 images.append(img_preprocess)
 
-            image_input = torch.tensor(np.stack(images)).to(self.device)
+            # image_input = torch.tensor(np.stack(images)).to(self.device)
             with torch.no_grad():
-                logits_per_image, _ = self.model(image_input, text)
+                self.model.eval()
+                # logits_per_image, _ = self.model(image_input, text)
+                logits_per_image = torch.empty((0, len(attributes)))
+                for image in images:
+                    print(image.shape)
+                    image = image.unsqueeze(0)
+                    print(image.shape)
+                    image = image.to(self.device)
+                    print(image.shape)
+                    print(text.shape)
+                    logits_per_image = torch.cat(
+                        (
+                            logits_per_image,
+                            self.model(image, text)[0],
+                        ),
+                        dim=0,
+                    )
 
-                batch_probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+                batch_probs = (
+                    torch.sigmoid(logits_per_image).to(self.device).numpy()
+                )  # logits_per_image.softmax(dim=-1).cpu().numpy()
 
                 attribute_probs = [[] for _ in range(len(batch_probs))]
                 for k in range(len(batch_probs)):
