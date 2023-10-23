@@ -48,7 +48,7 @@ class MultiFairFaceDataset(Dataset):
         data = data.sample(frac=1, random_state=split_seed).reset_index(drop=True)
 
         # Create a new dataset with mixed images
-        mixed_data = create_mixed_dataset(data, SIZE)
+        mixed_data = create_mixed_dataset(data, SIZE, split_seed)
 
         if transform_to_paths:
             save_images_to_disk(mixed_data, IMAGE_DIR)

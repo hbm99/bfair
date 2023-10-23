@@ -1,5 +1,5 @@
 import os
-from random import randint, sample
+import random
 
 import pandas as pd
 from PIL import Image
@@ -96,16 +96,17 @@ def merge_attribute_values(attribute, row_i, row_j):
     return attribute_value_i
 
 
-def create_mixed_dataset(data, size):
+def create_mixed_dataset(data, size, split_seed):
+    random.seed(split_seed)
     mixed_data = pd.DataFrame(columns=data.columns)
     num_rows = len(data)
     for i in range(size):
         row_i = data.iloc[i]
 
         image_list = [row_i[IMAGE_COLUMN]]
-        rows_to_concat = randint(0, 2)
+        rows_to_concat = random.randint(0, 2)
         for _ in range(rows_to_concat):
-            row_j = data.iloc[randint(0, num_rows - 1)]
+            row_j = data.iloc[random.randint(0, num_rows - 1)]
 
             image_list.append(row_j[IMAGE_COLUMN])
 
@@ -114,8 +115,8 @@ def create_mixed_dataset(data, size):
 
         row_i[IMAGE_COLUMN] = concat_images(
             [
-                sample(image_list, randint(1, len(image_list)))
-                for _ in range(randint(1, len(image_list)))
+                random.sample(image_list, random.randint(1, len(image_list)))
+                for _ in range(random.randint(1, len(image_list)))
             ]
         )
         mixed_data = mixed_data.append(row_i, ignore_index=True)

@@ -19,7 +19,7 @@ from .base import Dataset
 CIFAR_IMAGE_COLUMN = "img"
 IMAGE_COLUMN = "image"
 
-SIZE = 80000
+SIZE = 10
 IMAGE_DIR = "datasets/noisymultifairface"
 
 
@@ -67,7 +67,7 @@ class NoisyMultiFairFaceDataset(Dataset):
 
         new_df_noisy = new_df_noisy.fillna("")
 
-        mixed_data = create_mixed_dataset(new_df_noisy, SIZE)
+        mixed_data = create_mixed_dataset(new_df_noisy, SIZE, split_seed)
 
         if transform_to_paths:
             save_images_to_disk(mixed_data, IMAGE_DIR)
