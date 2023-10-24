@@ -11,9 +11,10 @@ Loading dataset
 
 # Commented out IPython magic to ensure Python compatibility.
 
+import random
+from statistics import mean
 import datasets as db
 import pandas as pd
-from random import randint, sample
 from PIL import Image
 
 MALE_VALUE = "Male"
@@ -149,26 +150,36 @@ def merge_attribute_values(attribute, row_i, row_j):
     return attribute_value_i
 
 
-def create_mixed_dataset(data, size):
+def create_mixed_dataset(data, size, split_seed):
+    random.seed(split_seed)
     mixed_data = pd.DataFrame(columns=data.columns)
     num_rows = len(data)
     for i in range(size):
         row_i = data.iloc[i]
 
         image_list = [row_i[IMAGE_COLUMN]]
-        rows_to_concat = randint(0, 2)
+        rows_to_concat = random.randint(0, 2)
         for _ in range(rows_to_concat):
-            row_j = data.iloc[randint(0, num_rows - 1)]
+            row_j = data.iloc[random.randint(0, num_rows - 1)]
 
             image_list.append(row_j[IMAGE_COLUMN])
 
             for attribute in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
                 row_i[attribute] = merge_attribute_values(attribute, row_i, row_j)
 
+        # Shuffle the list
+        random.shuffle(image_list)
+
+        # Determine the number of chunks
+        num_chunks = random.randint(1, len(image_list))
+
+        # Calculate the size of each chunk
+        chunk_size = len(image_list) // num_chunks
+
         row_i[IMAGE_COLUMN] = concat_images(
             [
-                sample(image_list, randint(1, len(image_list)))
-                for _ in range(randint(1, len(image_list)))
+                image_list[i : i + chunk_size]
+                for i in range(0, len(image_list), chunk_size)
             ]
         )
         mixed_data = mixed_data.append(row_i, ignore_index=True)
@@ -212,7 +223,7 @@ new_df_noisy = new_df_noisy.sample(frac=1, random_state=split_seed).reset_index(
 
 new_df_noisy = new_df_noisy.fillna("")
 
-mixed_data = create_mixed_dataset(new_df_noisy, SIZE)
+mixed_data = create_mixed_dataset(new_df_noisy, SIZE, 0)
 
 """Loaded dataset!
 
@@ -301,6 +312,90 @@ def safe_division(numerator, denominator, default=0):
     return numerator / denominator if denominator else default
 
 
+def print_scores(column_name, scores):
+    print(f"{column_name} scores:")
+    for key, value in scores.items():
+        print(f"{key}: {value}")
+
+
+def compute_scores(ir_counter, ac_counter):
+    scores = {}
+    per_group = []
+    for value, (correct_hit, spurious, missing, _) in ir_counter.items():
+        precision = safe_division(correct_hit, correct_hit + spurious)
+        recall = safe_division(correct_hit, correct_hit + missing)
+        f1 = safe_division(2 * precision * recall, precision + recall)
+        scores[value] = group = {
+            PRECISION: precision,
+            RECALL: recall,
+            F1: f1,
+        }
+        per_group.append(group)
+
+    scores[MACRO_PRECISION] = mean(group[PRECISION] for group in per_group)
+    scores[MACRO_RECALL] = mean(group[RECALL] for group in per_group)
+    scores[MACRO_F1] = mean(group[F1] for group in per_group)
+
+    total_correct = 0
+    total_total = 0
+    total_accuracy = 0
+    for value, (correct, total) in ac_counter.items():
+        total_correct += correct
+        total_total += total
+        total_accuracy += safe_division(correct, total)
+
+    scores[MICRO_ACC] = safe_division(total_correct, total_total)
+    scores[MACRO_ACC] = safe_division(total_accuracy, len(ac_counter))
+
+    return scores
+
+
+def compute_errors(values, ir_counter, ac_counter, true_ann, pred_ann):
+    for i in range(len(values)):
+        if values[i] not in ir_counter.keys():
+            ir_counter[values[i]] = (0, 0, 0, 0)
+        correct_hit, spurious, missing, correct_rejection = ir_counter[values[i]]
+        if true_ann[i] == 1 and pred_ann[i] == 0:
+            missing += 1
+        elif pred_ann[i] == 1 and true_ann[i] == 0:
+            spurious += 1
+        elif true_ann[i] == 1:
+            correct_hit += 1
+        else:
+            correct_rejection += 1
+        ir_counter[values[i]] = (
+            correct_hit,
+            spurious,
+            missing,
+            correct_rejection,
+        )
+
+    true_ann_key = ""
+    for item in true_ann:
+        true_ann_key += str(int(item))
+
+    correct, total = ac_counter.get(true_ann_key, (0, 0))
+    equal = int(true_ann == pred_ann)
+    ac_counter[true_ann_key] = (correct + equal, total + 1)
+
+
+def set_ground_truth(values, place, batch, ground_truth, i):
+    truth_idxs = []
+    for item in batch[place]:
+        if isinstance(item, tuple):
+            item = item[0]
+        if item in values:
+            truth_idxs.append(values.index(item))
+    for truth_idx in truth_idxs:
+        ground_truth[i, truth_idx] = 1
+
+
+def get_pred(logits_per_image):
+    batch_probs = torch.sigmoid(logits_per_image).to(device).numpy()
+    rounded_batch_probs = np.round(batch_probs)
+    return rounded_batch_probs.tolist()[0]
+
+
 if device == "cpu":
     model.float()
 
@@ -310,6 +405,15 @@ scheduler = optim.lr_scheduler.CosineAnnealingLR(
     optimizer, len(train_dataloader) * EPOCH
 )
 
+PRECISION = "precision"
+RECALL = "recall"
+F1 = "f1"
+MACRO_PRECISION = "macro-precision"
+MACRO_RECALL = "macro-recall"
+MACRO_F1 = "macro-f1"
+
+MICRO_ACC = "micro-accuracy"
+MACRO_ACC = "macro-accuracy"
 
 best_gender_mac_acc = -1
 best_gender_ep = -1
@@ -318,6 +422,7 @@ GENDER_PLACE = 1
 best_race_mac_acc = -1
 best_race_ep = -1
 RACE_PLACE = 2
+
 
 for epoch in range(EPOCH):
     print(
@@ -391,99 +496,95 @@ for epoch in range(EPOCH):
     gender_tr_loss /= step
     race_tr_loss /= step
 
+    gender_ir_counter = {}
     gender_ac_counter = {}
+    race_ir_counter = {}
     race_ac_counter = {}
+    step = 0
+    gender_te_loss = 0
+    race_te_loss = 0
     with torch.no_grad():
         model.eval()
         val_pbar = tqdm(validation_dataloader, leave=False)
         for batch in val_pbar:
+            step += 1
             images = batch[0]
 
             images = images.to(device)
 
-            gender_logits_per_image, gender_logits_per_text = model(
-                images, gender_texts
-            )
             gender_ground_truth = torch.zeros((BATCH_SIZE, len(GENDER_VALUES))).to(
                 device
             )
 
-            race_logits_per_image, race_logits_per_text = model(images, race_texts)
             race_ground_truth = torch.zeros((BATCH_SIZE, len(RACE_VALUES))).to(device)
 
             for i in range(BATCH_SIZE):
-                # gender
-                gender_truth_idxs = []
-                for item in batch[GENDER_PLACE]:
-                    if isinstance(item, tuple):
-                        item = item[0]
-                    if item in GENDER_VALUES:
-                        gender_truth_idxs.append(GENDER_VALUES.index(item))
-                for gender_truth_idx in gender_truth_idxs:
-                    gender_ground_truth[i, gender_truth_idx] = 1
+                set_ground_truth(
+                    GENDER_VALUES, GENDER_PLACE, batch, gender_ground_truth, i
+                )
 
-                # race
-                race_truth_idxs = []
-                for item in batch[RACE_PLACE]:
-                    if isinstance(item, tuple):
-                        item = item[0]
-                    if item in RACE_VALUES:
-                        race_truth_idxs.append(RACE_VALUES.index(item))
-                for race_truth_idx in race_truth_idxs:
-                    race_ground_truth[i, race_truth_idx] = 1
+                set_ground_truth(RACE_VALUES, RACE_PLACE, batch, race_ground_truth, i)
 
-            # gender_batch_probs = (
-            #     gender_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
-            # )
-            gender_batch_probs = (
-                torch.sigmoid(gender_logits_per_image).to(device).numpy()
-            )
-            rounded_g_b_p = np.round(gender_batch_probs)
+            gender_total_loss = loss_img(gender_logits_per_image, gender_ground_truth)
+            gender_te_loss += gender_total_loss.item()
+
+            race_total_loss = loss_img(race_logits_per_image, race_ground_truth)
+            race_te_loss += race_total_loss.item()
 
             gender_ground_truth = gender_ground_truth.tolist()[0]
-            rounded_g_b_p = rounded_g_b_p.tolist()[0]
-
-            true_ann = gender_ground_truth
-            pred_ann = rounded_g_b_p
-
-            true_ann_key = ""
-            for item in true_ann:
-                true_ann_key += str(int(item))
-
-            correct, total = gender_ac_counter.get(true_ann_key, (0, 0))
-            equal = int(true_ann == pred_ann)
-            gender_ac_counter[true_ann_key] = (correct + equal, total + 1)
-
-            # race_batch_probs = (
-            #     race_logits_per_image.softmax(dim=-1).cpu().detach().numpy()
-            # )
-            race_batch_probs = torch.sigmoid(race_logits_per_image).to(device).numpy()
-            rounded_r_b_p = np.round(race_batch_probs)
-
             race_ground_truth = race_ground_truth.tolist()[0]
-            rounded_r_b_p = rounded_r_b_p.tolist()[0]
 
-            true_ann = race_ground_truth
-            pred_ann = rounded_r_b_p
+            gender_logits_per_image, _ = model(images, gender_texts)
+            rounded_g_b_p = get_pred(gender_logits_per_image)
 
-            true_ann_key = ""
-            for item in true_ann:
-                true_ann_key += str(int(item))
+            race_logits_per_image, _ = model(images, race_texts)
+            rounded_r_b_p = get_pred(race_logits_per_image)
 
-            correct, total = race_ac_counter.get(true_ann_key, (0, 0))
-            equal = int(true_ann == pred_ann)
-            race_ac_counter[true_ann_key] = (correct + equal, total + 1)
+            # Compute gender errors
+            compute_errors(
+                GENDER_VALUES,
+                gender_ir_counter,
+                gender_ac_counter,
+                gender_ground_truth,
+                rounded_g_b_p,
+            )
 
-    total_accuracy = 0
-    for value, (correct, total) in gender_ac_counter.items():
-        total_accuracy += safe_division(correct, total)
-    gender_macro_acc = safe_division(total_accuracy, len(gender_ac_counter))
+            # Compute race errors
+            compute_errors(
+                RACE_VALUES,
+                race_ir_counter,
+                race_ac_counter,
+                race_ground_truth,
+                rounded_r_b_p,
+            )
 
-    total_accuracy = 0
-    for value, (correct, total) in race_ac_counter.items():
-        total_accuracy += safe_division(correct, total)
-    race_macro_acc = safe_division(total_accuracy, len(race_ac_counter))
+            val_pbar.set_description(
+                f"gender test batchCE: {gender_total_loss.item()}", refresh=True
+            )
+            val_pbar.set_description(
+                f"race test batchCE: {race_total_loss.item()}", refresh=True
+            )
 
+        gender_te_loss /= step
+        race_te_loss /= step
+
+    # Compute gender scores
+    gender_scores = compute_scores(gender_ir_counter, gender_ac_counter)
+
+    # Print gender scores
+    print_scores(GENDER_COLUMN, gender_scores)
+
+    print()
+
+    # Compute race scores
+    race_scores = compute_scores(race_ir_counter, race_ac_counter)
+
+    # Print race scores
+    print_scores(RACE_COLUMN, race_scores)
+
+    # Model selection
+    gender_macro_acc = gender_scores[MACRO_ACC]
+    race_macro_acc = race_scores[MACRO_ACC]
     if gender_macro_acc >= best_gender_mac_acc and race_macro_acc >= best_race_mac_acc:
         best_gender_mac_acc = gender_macro_acc
         best_race_mac_acc = race_macro_acc
@@ -493,7 +594,7 @@ for epoch in range(EPOCH):
 
         best_model = model
     print(
-        f"epoch {epoch}, gender_tr_loss {gender_tr_loss}, gender_macro_acc {gender_macro_acc}, race_tr_loss {race_tr_loss}, race_macro_acc {race_macro_acc}"
+        f"epoch {epoch}, gender_tr_loss {gender_tr_loss}, gender_te_loss {gender_te_loss}, gender_macro_acc {gender_macro_acc}, race_tr_loss {race_tr_loss}, race_te_loss {race_te_loss}, race_macro_acc {race_macro_acc}"
     )
 
 torch.save(best_model.cpu().state_dict(), "best_model.pt")

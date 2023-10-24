@@ -127,10 +127,6 @@ def create_mixed_dataset(data, size, split_seed):
                 image_list[i : i + chunk_size]
                 for i in range(0, len(image_list), chunk_size)
             ]
-            # [
-            #     random.sample(image_list, random.randint(1, len(image_list)))
-            #     for _ in range(random.randint(1, len(image_list)))
-            # ]
         )
         mixed_data = mixed_data.append(row_i, ignore_index=True)
 
