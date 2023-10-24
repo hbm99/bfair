@@ -84,10 +84,6 @@ def main():
         output_stream = None
 
     try:
-        images_for_training = []
-        annotations_for_training = []
-        images_for_testing = []
-        annotations_for_testing = []
         attr_cls = P_RACE
         values = FF_RACE_VALUES
 
@@ -103,15 +99,10 @@ def main():
         if DB_NOISYMULTIFAIRFACE in args.dataset:
             dataset = load_noisymultifairface(split_seed=0)
 
-        images_for_training.append(dataset.data[IMAGE_COLUMN])
-        annotations_for_training.append(dataset.data[attr_cls])
-        images_for_testing.append(dataset.test[IMAGE_COLUMN])
-        annotations_for_testing.append(dataset.test[attr_cls])
-
-        X_train = pd.concat(images_for_training)
-        y_train = pd.concat(annotations_for_training)
-        X_test = pd.concat(images_for_testing)
-        y_test = pd.concat(annotations_for_testing)
+        X_train = pd.concat([dataset.data[IMAGE_COLUMN]])
+        y_train = pd.concat([dataset.data[attr_cls]])
+        X_test = pd.concat([dataset.test[IMAGE_COLUMN]])
+        y_test = pd.concat([dataset.test[attr_cls]])
 
         best_solution, best_fn, search = optimize(
             X_train,

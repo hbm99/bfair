@@ -59,7 +59,7 @@ def merge_attribute_values(attribute, row_i, row_j):
     attribute_value_j = row_j[attribute]
 
     if attribute_value_i == "" and attribute_value_j == "":
-        return ''
+        return ""
     if attribute_value_i == "":
         return attribute_value_j
     if attribute_value_j == "":
@@ -113,11 +113,24 @@ def create_mixed_dataset(data, size, split_seed):
             for attribute in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
                 row_i[attribute] = merge_attribute_values(attribute, row_i, row_j)
 
+        # Shuffle the list
+        random.shuffle(image_list)
+
+        # Determine the number of chunks
+        num_chunks = random.randint(1, len(image_list))
+
+        # Calculate the size of each chunk
+        chunk_size = len(image_list) // num_chunks
+
         row_i[IMAGE_COLUMN] = concat_images(
             [
-                random.sample(image_list, random.randint(1, len(image_list)))
-                for _ in range(random.randint(1, len(image_list)))
+                image_list[i : i + chunk_size]
+                for i in range(0, len(image_list), chunk_size)
             ]
+            # [
+            #     random.sample(image_list, random.randint(1, len(image_list)))
+            #     for _ in range(random.randint(1, len(image_list)))
+            # ]
         )
         mixed_data = mixed_data.append(row_i, ignore_index=True)
 
