@@ -182,6 +182,10 @@ def create_mixed_dataset(data, size, split_seed):
                 for i in range(0, len(image_list), chunk_size)
             ]
         )
+        image = row_i[IMAGE_COLUMN]
+        sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+        im_resize = image.resize((sqrWidth, sqrWidth))
+        row_i[IMAGE_COLUMN] = im_resize
         mixed_data = mixed_data.append(row_i, ignore_index=True)
 
     return mixed_data
@@ -280,10 +284,10 @@ validation_dataloader = DataLoader(
 attributes_queries = {}
 
 for label in RACE_VALUES:
-    attributes_queries[label] = "A photo of a person of " + label.lower() + " race."
+    attributes_queries[label] = "A photo of a " + label.lower() + " race person."
 
 for label in GENDER_VALUES:
-    attributes_queries[label] = "A photo of a person of " + label.lower() + " gender."
+    attributes_queries[label] = "A photo of a " + label.lower() + " gender person."
 
 # print(attributes_queries)
 

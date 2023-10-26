@@ -1,5 +1,6 @@
 import os
 import random
+import numpy as np
 
 import pandas as pd
 from PIL import Image
@@ -128,6 +129,10 @@ def create_mixed_dataset(data, size, split_seed):
                 for i in range(0, len(image_list), chunk_size)
             ]
         )
+        image = row_i[IMAGE_COLUMN]
+        sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+        im_resize = image.resize((sqrWidth, sqrWidth))
+        row_i[IMAGE_COLUMN] = im_resize
         mixed_data = mixed_data.append(row_i, ignore_index=True)
 
     return mixed_data
