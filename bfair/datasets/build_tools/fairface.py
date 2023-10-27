@@ -138,6 +138,66 @@ def create_mixed_dataset(data, size, split_seed):
     return mixed_data
 
 
+def get_flatten(group):
+    attributes_set = set()
+    for item in group:
+        if isinstance(item, list):
+            for item2 in item:
+                attributes_set.add(item2)
+        else:
+            attributes_set.add(item)
+    return attributes_set
+
+
+def get_balanced_by_gender_race(df: pd.DataFrame, split_seed: int):
+    groups = list(zip(df[GENDER_COLUMN], df[RACE_COLUMN]))
+
+    flatten_groups = []
+    for group in groups:
+        flatten_groups.append(get_flatten(group))
+
+    used_groups = []
+    groups_counter = []
+    for group in flatten_groups:
+        if group in used_groups:
+            for i in range(len(groups_counter)):
+                if groups_counter[i][0] == group:
+                    groups_counter[i][1] += 1
+                    break
+        else:
+            used_groups.append(group)
+            groups_counter.append([group, 1])
+
+    min_count = min([x[1] for x in groups_counter])
+
+    balanced_data = pd.DataFrame(columns=df.columns)
+
+    for gender, race in list(zip(df[GENDER_COLUMN], df[RACE_COLUMN])):
+        flatten_gender = (
+            get_flatten(gender) if isinstance(gender, list) else set([gender])
+        )
+        flatten_race = get_flatten(race) if isinstance(race, list) else set([race])
+
+        used_group = flatten_gender.union(flatten_race)
+        if used_group not in used_groups:
+            continue
+        used_groups.remove(used_group)
+        group = df[
+            (df[GENDER_COLUMN].apply(lambda x: x == gender))
+            & (df[RACE_COLUMN].apply(lambda x: x == race))
+        ]
+        sample = (
+            group.sample(n=min_count, random_state=split_seed)
+            if len(group) > min_count
+            else group
+        )
+        balanced_data = pd.concat([balanced_data, sample])
+
+    balanced_data = balanced_data.sample(frac=1, random_state=split_seed)
+
+    return balanced_data
+
+
 def save_images_to_disk(data, image_dir):
     # Create the image directory if it doesn't exist
     os.makedirs(image_dir, exist_ok=True)
