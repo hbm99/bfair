@@ -23,6 +23,7 @@ class ClipBasedSensor(Sensor):
         learner,
         tokens_pipeline: Sequence[List[str]],
         restricted_to: Union[str, Set[str]] = None,
+        logits_to_probs: str = "sigmoid",
     ) -> None:
         super().__init__(restricted_to)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -31,10 +32,17 @@ class ClipBasedSensor(Sensor):
         self.learner = learner
         self.tokens_pipeline = tokens_pipeline
         self.multi_label_binarizer = None
+        self.logits_to_probs = logits_to_probs
 
     @classmethod
-    def build(cls, filtering_pipeline=(), learner=(), tokens_pipeline=()):
-        return cls(filtering_pipeline, learner, tokens_pipeline)
+    def build(
+        cls,
+        filtering_pipeline=(),
+        learner=(),
+        tokens_pipeline=(),
+        logits_to_probs="sigmoid",
+    ):
+        return cls(filtering_pipeline, learner, tokens_pipeline, logits_to_probs)
 
     def __call__(self, item, attributes: List[str], attr_cls: str):
         """
@@ -178,9 +186,17 @@ class ClipBasedSensor(Sensor):
                         dim=0,
                     )
 
-                batch_probs = (
-                    torch.sigmoid(logits_per_image).to(self.device).numpy()
-                )  # logits_per_image.softmax(dim=-1).cpu().numpy()
+                if self.logits_to_probs == "sigmoid":
+                    batch_probs = (
+                        torch.sigmoid(logits_per_image).to(self.device).numpy()
+                    )
+                else:
+                    batch_probs = (
+                        logits_per_image.softmax(dim=-1).to(self.device).numpy()
+                    )
+                    if self.logits_to_probs == "normalize_softmax":
+                        max = max(batch_probs)
+                        batch_probs = batch_probs / max  # check pending
 
                 attribute_probs = [[] for _ in range(len(batch_probs))]
                 for k in range(len(batch_probs)):

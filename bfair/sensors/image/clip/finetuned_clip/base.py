@@ -4,7 +4,7 @@ import torch
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.text.embedding.filters import Filter
 
-MODEL_PATH = 'bfair/sensors/image/clip/finetuned_clip/finetuned_clip.pt'
+MODEL_PATH = "bfair/sensors/image/clip/finetuned_clip/finetuned_clip.pt"
 
 
 class FinetunedClipSensor(ClipBasedSensor):
@@ -14,7 +14,9 @@ class FinetunedClipSensor(ClipBasedSensor):
         learner,
         tokens_pipeline: Sequence[List[str]],
         restricted_to: Union[str, Set[str]] = None,
+        logits_to_probs: str = "sigmoid",
     ) -> None:
-        super().__init__(filtering_pipeline, learner, tokens_pipeline, restricted_to)
+        super().__init__(
+            filtering_pipeline, learner, tokens_pipeline, restricted_to, logits_to_probs
+        )
         self.model.load_state_dict(torch.load(MODEL_PATH))
-

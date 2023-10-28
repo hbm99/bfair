@@ -86,6 +86,7 @@ def main():
     try:
         attr_cls = P_RACE
         values = FF_RACE_VALUES
+        logits_to_probs = "sigmoid"
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)
@@ -122,6 +123,7 @@ def main():
             log_path=args.output,
             inspect=True,
             output_stream=output_stream,
+            logits_to_probs=logits_to_probs,
         )
 
         print("Best solution", file=output_stream)

@@ -53,6 +53,7 @@ def optimize(
     log_path=None,
     inspect=False,
     output_stream=None,
+    logits_to_probs="sigmoid",
 ):
     score_key = score_key if isinstance(score_key, (list, tuple)) else [score_key]
 
@@ -67,6 +68,7 @@ def optimize(
             force_clip_based_sensor=force_clip_based_sensor,
             attr_cls=attr_cls,
             attributes=attributes,
+            logits_to_probs=logits_to_probs,
         ),
         fitness_fn=build_fn(
             X_train,
@@ -124,6 +126,7 @@ def generate(
     *,
     attr_cls,
     attributes,
+    logits_to_probs,
 ):
     """
     Generates a new SampleModel object with the given Sampler.
@@ -133,14 +136,14 @@ def generate(
     if force_clip_based_sensor or (
         consider_clip_based_sensor and sampler.boolean("include-clip-sensor")
     ):
-        sensor = get_clip_based_sensor(sampler, attr_cls, attributes)
+        sensor = get_clip_based_sensor(sampler, attr_cls, attributes, logits_to_probs)
         sensors.append(sensor)
 
     handler = ImageSensorHandler(sensors, merge=None)
     return SampleModel(sampler, handler)
 
 
-def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
+def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, logits_to_probs):
     prefix = "clip-sensor."
 
     tokens_pipeline = get_tokens_pipeline(sampler, attr_cls, attributes, prefix)
@@ -158,6 +161,7 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes):
         filtering_pipeline=filtering_pipeline,
         learner=learner,
         tokens_pipeline=tokens_pipeline,
+        logits_to_probs=logits_to_probs,
     )
     return sensor
 
@@ -172,7 +176,9 @@ def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
         "__attr__": [value.lower() for value in attr_values],
         attr + ": __attr__": [attr + ": " + value.lower() for value in attr_values],
         "This is a person of __attr__ "
-        + attr: ["This is a person of " + value.lower() + " " + attr for value in attr_values],
+        + attr: [
+            "This is a person of " + value.lower() + " " + attr for value in attr_values
+        ],
         "This is a person of "
         + attr
         + " __attr__": [
@@ -182,13 +188,18 @@ def get_phrase(sampler: LogSampler, attr, attr_values, prefix):
         + attr: ["A person of " + value.lower() + " " + attr for value in attr_values],
         "A person of "
         + attr
-        + " __attr__": ["A person of " + attr + " " + value.lower() for value in attr_values],
+        + " __attr__": [
+            "A person of " + attr + " " + value.lower() for value in attr_values
+        ],
         "A __attr__ "
         + attr
-        + " person": ["A " + value.lower() + " " + attr + " person" for value in attr_values],
+        + " person": [
+            "A " + value.lower() + " " + attr + " person" for value in attr_values
+        ],
         "An image of a person of __attr__ "
         + attr: [
-            "An image of a person of " + value.lower() + " " + attr for value in attr_values
+            "An image of a person of " + value.lower() + " " + attr
+            for value in attr_values
         ],
     }
     phrase = sampler.choice(list(options.keys()), handle=f"{prefix}")
