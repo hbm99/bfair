@@ -21,9 +21,9 @@ class ClipBasedSensor(Sensor):
         self,
         filtering_pipeline: Sequence[Filter],
         learner,
+        logits_to_probs: str,
         tokens_pipeline: Sequence[List[str]],
         restricted_to: Union[str, Set[str]] = None,
-        logits_to_probs: str = "sigmoid",
     ) -> None:
         super().__init__(restricted_to)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,10 +39,10 @@ class ClipBasedSensor(Sensor):
         cls,
         filtering_pipeline=(),
         learner=(),
-        tokens_pipeline=(),
         logits_to_probs="sigmoid",
+        tokens_pipeline=(),
     ):
-        return cls(filtering_pipeline, learner, tokens_pipeline, logits_to_probs)
+        return cls(filtering_pipeline, learner, logits_to_probs, tokens_pipeline)
 
     def __call__(self, item, attributes: List[str], attr_cls: str):
         """

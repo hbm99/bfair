@@ -160,8 +160,8 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, logits_to_p
     sensor = ClipBasedSensor.build(
         filtering_pipeline=filtering_pipeline,
         learner=learner,
-        tokens_pipeline=tokens_pipeline,
         logits_to_probs=logits_to_probs,
+        tokens_pipeline=tokens_pipeline,
     )
     return sensor
 
