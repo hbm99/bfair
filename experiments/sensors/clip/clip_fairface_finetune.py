@@ -11,6 +11,7 @@ Loading dataset
 
 # Commented out IPython magic to ensure Python compatibility.
 
+from itertools import combinations
 import random
 from statistics import mean
 import datasets as db
@@ -58,6 +59,7 @@ _RACE_MAP = {
 }
 
 SIZE = 5000
+BALANCED = True
 
 """utils"""
 
@@ -191,6 +193,121 @@ def create_mixed_dataset(data, size, split_seed):
     return mixed_data
 
 
+def create_balanced_dataset(data, size, split_seed):
+    random.seed(split_seed)
+
+    size_per_representation = size // (
+        (2 ** len(RACE_VALUES) - 1) * (2 ** len(GENDER_VALUES) - 1)
+    )
+    gender_representations = [
+        list(combinations(GENDER_VALUES, i)) for i in range(1, len(GENDER_VALUES) + 1)
+    ]
+    gender_representations = [
+        item for sublist in gender_representations for item in sublist
+    ]
+    race_representations = [
+        list(combinations(RACE_VALUES, i)) for i in range(1, len(RACE_VALUES) + 1)
+    ]
+    race_representations = [
+        item for sublist in race_representations for item in sublist
+    ]
+
+    balanced_data = pd.DataFrame(columns=data.columns)
+
+    empty_gender_race_repr_df = data[
+        (data[GENDER_COLUMN].apply(lambda x: x == ""))
+        & (data[RACE_COLUMN].apply(lambda x: x == ""))
+    ]
+    for gender_representation in gender_representations:
+        for race_representation in race_representations:
+            gender_repr_df = data[
+                data[GENDER_COLUMN].apply(lambda x: x in gender_representation)
+            ]
+            repr_df = gender_repr_df[
+                gender_repr_df[RACE_COLUMN].apply(lambda x: x in race_representation)
+            ]
+
+            image_list = []
+
+            # P = 0.25 to add an image with no race - gender classification to mixed image
+            if random.randint(0, 4) == 0:
+                image_list.append(
+                    empty_gender_race_repr_df.sample(n=1, random_state=split_seed)
+                )
+
+            for i in range(size_per_representation):
+                row_i = repr_df.iloc[i]
+                image_list = [row_i[IMAGE_COLUMN]]
+                rows_to_concat = random.randint(0, 2)
+                for _ in range(rows_to_concat):
+                    row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
+
+                    image_list.append(row_j[IMAGE_COLUMN])
+
+                    for attr in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
+                        row_i[attr] = merge_attribute_values(attr, row_i, row_j)
+
+                # Shuffle the list
+                random.shuffle(image_list)
+
+                # Determine the number of chunks
+                num_chunks = random.randint(1, len(image_list))
+
+                # Calculate the size of each chunk
+                chunk_size = len(image_list) // num_chunks
+
+                row_i[IMAGE_COLUMN] = concat_images(
+                    [
+                        image_list[i : i + chunk_size]
+                        for i in range(0, len(image_list), chunk_size)
+                    ]
+                )
+
+                # Resize image for compatibility with CLIP
+                image = row_i[IMAGE_COLUMN]
+                sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+                im_resize = image.resize((sqrWidth, sqrWidth))
+                row_i[IMAGE_COLUMN] = im_resize
+
+                balanced_data = balanced_data.append(row_i, ignore_index=True)
+
+    repr_df = empty_gender_race_repr_df
+    for i in range(size_per_representation):
+        row_i = repr_df.iloc[i]
+        image_list = [row_i[IMAGE_COLUMN]]
+        rows_to_concat = random.randint(0, 2)
+        for _ in range(rows_to_concat):
+            row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
+
+            image_list.append(row_j[IMAGE_COLUMN])
+
+        # Shuffle the list
+        random.shuffle(image_list)
+
+        # Determine the number of chunks
+        num_chunks = random.randint(1, len(image_list))
+
+        # Calculate the size of each chunk
+        chunk_size = len(image_list) // num_chunks
+
+        row_i[IMAGE_COLUMN] = concat_images(
+            [
+                image_list[i : i + chunk_size]
+                for i in range(0, len(image_list), chunk_size)
+            ]
+        )
+
+        # Resize image for compatibility with CLIP
+        image = row_i[IMAGE_COLUMN]
+        sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+        im_resize = image.resize((sqrWidth, sqrWidth))
+        row_i[IMAGE_COLUMN] = im_resize
+
+        balanced_data = balanced_data.append(row_i, ignore_index=True)
+
+    return balanced_data
+
+
 source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="validation")
 
 df_ff = pd.DataFrame.from_dict(source_ff)
@@ -227,7 +344,10 @@ new_df_noisy = new_df_noisy.sample(frac=1, random_state=split_seed).reset_index(
 
 new_df_noisy = new_df_noisy.fillna("")
 
-mixed_data = create_mixed_dataset(new_df_noisy, SIZE, 0)
+if BALANCED:
+    mixed_data = create_balanced_dataset(new_df_noisy, SIZE, 0)
+else:
+    mixed_data = create_mixed_dataset(new_df_noisy, SIZE, 0)
 
 """Loaded dataset!
 

@@ -1,9 +1,31 @@
+from itertools import combinations
 import os
 import random
 import numpy as np
 
 import pandas as pd
 from PIL import Image
+
+MALE_VALUE = "Male"
+FEMALE_VALUE = "Female"
+GENDER_VALUES = [MALE_VALUE, FEMALE_VALUE]
+
+EAST_ASIAN_VALUE = "East Asian"
+INDIAN_VALUE = "Indian"
+BLACK_VALUE = "Black"
+WHITE_VALUE = "White"
+MIDDLE_EASTERN_VALUE = "Middle Eastern"
+LATINO_HISPANIC_VALUE = "Latino_Hispanic"
+SOUTHEAST_ASIAN_VALUE = "Southeast Asian"
+RACE_VALUES = [
+    EAST_ASIAN_VALUE,
+    INDIAN_VALUE,
+    BLACK_VALUE,
+    WHITE_VALUE,
+    MIDDLE_EASTERN_VALUE,
+    LATINO_HISPANIC_VALUE,
+    SOUTHEAST_ASIAN_VALUE,
+]
 
 GENDER_COLUMN = "gender"
 RACE_COLUMN = "race"
@@ -138,62 +160,117 @@ def create_mixed_dataset(data, size, split_seed):
     return mixed_data
 
 
-def get_flatten(group):
-    attributes_set = set()
-    for item in group:
-        if isinstance(item, list):
-            for item2 in item:
-                attributes_set.add(item2)
-        else:
-            attributes_set.add(item)
-    return attributes_set
+def create_balanced_dataset(data, size, split_seed):
+    random.seed(split_seed)
 
+    size_per_representation = size // (
+        (2 ** len(RACE_VALUES) - 1) * (2 ** len(GENDER_VALUES) - 1)
+    )
+    gender_representations = [
+        list(combinations(GENDER_VALUES, i)) for i in range(1, len(GENDER_VALUES) + 1)
+    ]
+    gender_representations = [
+        item for sublist in gender_representations for item in sublist
+    ]
+    race_representations = [
+        list(combinations(RACE_VALUES, i)) for i in range(1, len(RACE_VALUES) + 1)
+    ]
+    race_representations = [
+        item for sublist in race_representations for item in sublist
+    ]
 
-def get_balanced_by_gender_race(df: pd.DataFrame, split_seed: int):
-    groups = list(zip(df[GENDER_COLUMN], df[RACE_COLUMN]))
+    balanced_data = pd.DataFrame(columns=data.columns)
 
-    flatten_groups = []
-    for group in groups:
-        flatten_groups.append(get_flatten(group))
+    empty_gender_race_repr_df = data[
+        (data[GENDER_COLUMN].apply(lambda x: x == ""))
+        & (data[RACE_COLUMN].apply(lambda x: x == ""))
+    ]
+    for gender_representation in gender_representations:
+        for race_representation in race_representations:
+            gender_repr_df = data[
+                data[GENDER_COLUMN].apply(lambda x: x in gender_representation)
+            ]
+            repr_df = gender_repr_df[
+                gender_repr_df[RACE_COLUMN].apply(lambda x: x in race_representation)
+            ]
 
-    used_groups = []
-    groups_counter = []
-    for group in flatten_groups:
-        if group in used_groups:
-            for i in range(len(groups_counter)):
-                if groups_counter[i][0] == group:
-                    groups_counter[i][1] += 1
-                    break
-        else:
-            used_groups.append(group)
-            groups_counter.append([group, 1])
+            image_list = []
 
-    min_count = min([x[1] for x in groups_counter])
+            # P = 0.25 to add an image with no race - gender classification to mixed image
+            if random.randint(0, 4) == 0:
+                image_list.append(
+                    empty_gender_race_repr_df.sample(n=1, random_state=split_seed)
+                )
 
-    balanced_data = pd.DataFrame(columns=df.columns)
+            for i in range(size_per_representation):
+                row_i = repr_df.iloc[i]
+                image_list = [row_i[IMAGE_COLUMN]]
+                rows_to_concat = random.randint(0, 2)
+                for _ in range(rows_to_concat):
+                    row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
 
-    for gender, race in list(zip(df[GENDER_COLUMN], df[RACE_COLUMN])):
-        flatten_gender = (
-            get_flatten(gender) if isinstance(gender, list) else set([gender])
+                    image_list.append(row_j[IMAGE_COLUMN])
+
+                    for attr in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
+                        row_i[attr] = merge_attribute_values(attr, row_i, row_j)
+
+                # Shuffle the list
+                random.shuffle(image_list)
+
+                # Determine the number of chunks
+                num_chunks = random.randint(1, len(image_list))
+
+                # Calculate the size of each chunk
+                chunk_size = len(image_list) // num_chunks
+
+                row_i[IMAGE_COLUMN] = concat_images(
+                    [
+                        image_list[i : i + chunk_size]
+                        for i in range(0, len(image_list), chunk_size)
+                    ]
+                )
+
+                # Resize image for compatibility with CLIP
+                image = row_i[IMAGE_COLUMN]
+                sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+                im_resize = image.resize((sqrWidth, sqrWidth))
+                row_i[IMAGE_COLUMN] = im_resize
+
+                balanced_data = balanced_data.append(row_i, ignore_index=True)
+
+    repr_df = empty_gender_race_repr_df
+    for i in range(size_per_representation):
+        row_i = repr_df.iloc[i]
+        image_list = [row_i[IMAGE_COLUMN]]
+        rows_to_concat = random.randint(0, 2)
+        for _ in range(rows_to_concat):
+            row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
+
+            image_list.append(row_j[IMAGE_COLUMN])
+
+        # Shuffle the list
+        random.shuffle(image_list)
+
+        # Determine the number of chunks
+        num_chunks = random.randint(1, len(image_list))
+
+        # Calculate the size of each chunk
+        chunk_size = len(image_list) // num_chunks
+
+        row_i[IMAGE_COLUMN] = concat_images(
+            [
+                image_list[i : i + chunk_size]
+                for i in range(0, len(image_list), chunk_size)
+            ]
         )
-        flatten_race = get_flatten(race) if isinstance(race, list) else set([race])
 
-        used_group = flatten_gender.union(flatten_race)
-        if used_group not in used_groups:
-            continue
-        used_groups.remove(used_group)
-        group = df[
-            (df[GENDER_COLUMN].apply(lambda x: x == gender))
-            & (df[RACE_COLUMN].apply(lambda x: x == race))
-        ]
-        sample = (
-            group.sample(n=min_count, random_state=split_seed)
-            if len(group) > min_count
-            else group
-        )
-        balanced_data = pd.concat([balanced_data, sample])
+        # Resize image for compatibility with CLIP
+        image = row_i[IMAGE_COLUMN]
+        sqrWidth = np.ceil(np.sqrt(image.size[0] * image.size[1])).astype(int)
+        im_resize = image.resize((sqrWidth, sqrWidth))
+        row_i[IMAGE_COLUMN] = im_resize
 
-    balanced_data = balanced_data.sample(frac=1, random_state=split_seed)
+        balanced_data = balanced_data.append(row_i, ignore_index=True)
 
     return balanced_data
 

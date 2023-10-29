@@ -2,8 +2,8 @@ import pandas as pd
 
 import datasets as db
 from bfair.datasets.build_tools.fairface import (
+    create_balanced_dataset,
     create_mixed_dataset,
-    get_balanced_by_gender_race as get_balanced,
     save_images_to_disk,
 )
 from bfair.datasets.fairface import (
@@ -20,7 +20,7 @@ from .base import Dataset
 CIFAR_IMAGE_COLUMN = "img"
 IMAGE_COLUMN = "image"
 
-SIZE = 80000
+SIZE = 50000
 IMAGE_DIR = "datasets/noisymultifairface"
 
 
@@ -28,9 +28,7 @@ def load_dataset(split_seed=None, **kwargs):
     return NoisyMultiFairFaceDataset.load(
         split_seed=split_seed,
         transform_to_paths=kwargs.get("transform_to_paths", True),
-        balance_current_representations=kwargs.get(
-            "balance_current_representations", False
-        ),
+        balanced=kwargs.get("balanced", True),
     )
 
 
@@ -40,7 +38,7 @@ class NoisyMultiFairFaceDataset(Dataset):
         cls,
         split_seed=0,
         transform_to_paths=True,
-        balance_current_representations=False,
+        balanced=True,
     ):
         source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="train")
 
@@ -77,10 +75,10 @@ class NoisyMultiFairFaceDataset(Dataset):
 
         new_df_noisy = new_df_noisy.fillna("")
 
-        mixed_data = create_mixed_dataset(new_df_noisy, SIZE, split_seed)
-
-        if balance_current_representations:
-            mixed_data = get_balanced(mixed_data, split_seed)
+        if balanced:
+            mixed_data = create_balanced_dataset(new_df_noisy, SIZE, split_seed)
+        else:
+            mixed_data = create_mixed_dataset(new_df_noisy, SIZE, split_seed)
 
         if transform_to_paths:
             save_images_to_disk(mixed_data, IMAGE_DIR)
