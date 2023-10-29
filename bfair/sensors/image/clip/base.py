@@ -195,8 +195,12 @@ class ClipBasedSensor(Sensor):
                         logits_per_image.softmax(dim=-1).to(self.device).numpy()
                     )
                     if self.logits_to_probs == "normalize_softmax":
-                        max = max(batch_probs)
-                        batch_probs = batch_probs / max  # check pending
+                        normalized_batch_probs = []
+                        for probs in batch_probs:
+                            max_prob = probs.max()
+                            probs = probs / max_prob
+                            normalized_batch_probs.append(probs)
+                        batch_probs = np.array(normalized_batch_probs)
 
                 attribute_probs = [[] for _ in range(len(batch_probs))]
                 for k in range(len(batch_probs)):
