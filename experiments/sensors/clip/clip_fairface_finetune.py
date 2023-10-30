@@ -17,6 +17,7 @@ from statistics import mean
 import datasets as db
 import pandas as pd
 from PIL import Image
+import numpy as np
 
 MALE_VALUE = "Male"
 FEMALE_VALUE = "Female"
@@ -722,4 +723,3 @@ for epoch in range(EPOCH):
     )
 
 torch.save(best_model.cpu().state_dict(), "best_model.pt")
-torch.save(model.state_dict(), "last_model.pt")
