@@ -160,6 +160,13 @@ def create_mixed_dataset(data, size, split_seed):
     return mixed_data
 
 
+def contains(annotations, representation):
+    for attr_clss in representation:
+        if attr_clss not in annotations:
+            return False
+    return True
+
+
 def create_balanced_dataset(data, size, split_seed):
     random.seed(split_seed)
 
@@ -194,25 +201,24 @@ def create_balanced_dataset(data, size, split_seed):
                 gender_repr_df[RACE_COLUMN].apply(lambda x: x in race_representation)
             ]
 
-            image_list = []
-
-            # P = 0.25 to add an image with no race - gender classification to mixed image
-            if random.randint(0, 4) == 0:
-                image_list.append(
-                    empty_gender_race_repr_df.sample(n=1, random_state=split_seed)
-                )
-
             for i in range(size_per_representation):
                 row_i = repr_df.iloc[i]
                 image_list = [row_i[IMAGE_COLUMN]]
-                rows_to_concat = random.randint(0, 2)
-                for _ in range(rows_to_concat):
-                    row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
 
+                rows_to_concat = random.randint(0, 2)
+                index = 0
+                all_represented = False
+                while index < rows_to_concat or not all_represented:
+                    index += 1
+                    row_j = repr_df.iloc[random.randint(0, len(repr_df) - 1)]
                     image_list.append(row_j[IMAGE_COLUMN])
 
                     for attr in [GENDER_COLUMN, RACE_COLUMN, AGE_COLUMN]:
                         row_i[attr] = merge_attribute_values(attr, row_i, row_j)
+                    if contains(
+                        row_i[GENDER_COLUMN], gender_representation
+                    ) and contains(row_i[RACE_COLUMN], race_representation):
+                        all_represented = True
 
                 # Shuffle the list
                 random.shuffle(image_list)
