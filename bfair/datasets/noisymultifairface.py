@@ -20,7 +20,7 @@ from .base import Dataset
 CIFAR_IMAGE_COLUMN = "img"
 IMAGE_COLUMN = "image"
 
-SIZE = 50000
+SIZE = 20000
 IMAGE_DIR = "datasets/noisymultifairface"
 
 
@@ -40,7 +40,7 @@ class NoisyMultiFairFaceDataset(Dataset):
         transform_to_paths=True,
         balanced=True,
     ):
-        source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="train")
+        source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="validation")
 
         df_ff = pd.DataFrame.from_dict(source_ff)
         gender = df_ff[GENDER_COLUMN].apply(lambda x: _GENDER_MAP[x])
@@ -55,7 +55,7 @@ class NoisyMultiFairFaceDataset(Dataset):
             axis=1,
         )
 
-        source_noisy_dataset = db.load_dataset("cifar100", split="train")
+        source_noisy_dataset = db.load_dataset("cifar100", split="test")
         df_noisy = pd.DataFrame.from_dict(source_noisy_dataset)
 
         # Remove undesired classifications (people related)

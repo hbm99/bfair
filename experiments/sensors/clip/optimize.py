@@ -86,7 +86,7 @@ def main():
     try:
         attr_cls = P_GENDER
         values = FF_GENDER_VALUES
-        logits_to_probs = "normalize_softmax"
+        logits_to_probs = "softmax"
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)
@@ -98,7 +98,7 @@ def main():
             dataset = load_multifairface(split_seed=0)
 
         if DB_NOISYMULTIFAIRFACE in args.dataset:
-            dataset = load_noisymultifairface(split_seed=0, balanced=False)
+            dataset = load_noisymultifairface(split_seed=0, balanced=True)
 
         X_train = pd.concat([dataset.data[IMAGE_COLUMN]])
         y_train = pd.concat([dataset.data[attr_cls]])

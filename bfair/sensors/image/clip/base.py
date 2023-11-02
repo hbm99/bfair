@@ -1,11 +1,10 @@
-import ast
 from typing import List, Sequence, Set, Union
 
 import clip
 import numpy as np
-from sklearn.calibration import LabelEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import StratifiedKFold, cross_validate
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.preprocessing import MultiLabelBinarizer
 import torch
 from autogoal.kb import Matrix, SemanticType
 from PIL import Image
@@ -31,7 +30,7 @@ class ClipBasedSensor(Sensor):
         self.filtering_pipeline = filtering_pipeline
         self.learner = learner
         self.tokens_pipeline = tokens_pipeline
-        self.encoder = None 
+        self.multi_label_binarizer = None
         self.logits_to_probs = logits_to_probs
 
     @classmethod
@@ -69,11 +68,8 @@ class ClipBasedSensor(Sensor):
         for labels in results:
             X.append([extended_labels[1] for extended_labels in labels[1]])
         y_pred_transformed = self.learner.predict(X)
-        y_pred = self.encoder.inverse_transform(y_pred_transformed)
-        labels = []
-        for item in y_pred:
-            labels.append(list(ast.literal_eval(item)))
-        return labels
+        y_pred = self.multi_label_binarizer.inverse_transform(y_pred_transformed)
+        return list(y_pred)
 
     def get_filtered(self, results):
         attributed_tokens = []
@@ -112,36 +108,36 @@ class ClipBasedSensor(Sensor):
 
         X = np.array(X).reshape(len(X), -1)
 
-        # Define the outer and inner cross-validation strategies
-        outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        mlskf = MultilabelStratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-        best_val_score = 0
+        lst_models = []
+        lst_accu_stratified = []
 
-        yy = ["".join(str(l)) for l in y]
-        self.encoder = LabelEncoder()
-        y_encoded = self.encoder.fit_transform(yy)
+        mlb = MultiLabelBinarizer()
+        self.multi_label_binarizer = mlb
+        mlb.fit(y)
+        y_transformed = mlb.transform(y)
 
-        for train_index, val_index in outer_cv.split(X, y_encoded):
+        for train_index, val_index in mlskf.split(X, y_transformed):
             X_train, X_val = X[train_index], X[val_index]
-            y_train, y_val = y_encoded[train_index], y_encoded[val_index]
 
-            model = self.learner
-
-            cv_results = cross_validate(
-                model,
-                X_train,
-                y_train,
-                cv=inner_cv,
-                scoring="accuracy",
-                return_estimator=True,
+            y_train_transformed, y_val_transformed = (
+                y_transformed[train_index],
+                y_transformed[val_index],
             )
 
-            for estimator in cv_results["estimator"]:
-                val_score = accuracy_score(y_val, estimator.predict(X_val))
-                if val_score > best_val_score:
-                    best_val_score = val_score
-                    self.learner = estimator
+            if not isinstance(self.learner, MultiOutputClassifier):
+                model = MultiOutputClassifier(self.learner())
+            else:
+                model = self.learner
+
+            model.fit(X_train, y_train_transformed)
+
+            lst_models.append(model)
+            lst_accu_stratified.append(model.score(X_val, y_val_transformed))
+
+        max_score_index = lst_accu_stratified.index(max(lst_accu_stratified))
+        self.learner = lst_models[max_score_index]
 
     def basic_call(self, item, attributes: List[str], attr_cls: str):
         """
