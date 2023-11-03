@@ -11,7 +11,10 @@ Loading dataset
 
 # Commented out IPython magic to ensure Python compatibility.
 
-from bfair.datasets.build_tools.fairface import create_balanced_dataset, create_mixed_dataset
+from bfair.datasets.build_tools.fairface import (
+    create_balanced_dataset,
+    create_mixed_dataset,
+)
 from statistics import mean
 import datasets as db
 import pandas as pd
@@ -58,7 +61,7 @@ _RACE_MAP = {
     6: SOUTHEAST_ASIAN_VALUE,
 }
 
-SIZE = 5000
+SIZE = 3000
 BALANCED = True
 
 """utils"""
@@ -110,7 +113,7 @@ def concat_images(image_list):
     return _get_concat_tile_resize(image_list)
 
 
-source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="validation")
+source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="train")
 
 df_ff = pd.DataFrame.from_dict(source_ff)
 gender = df_ff[GENDER_COLUMN].apply(lambda x: _GENDER_MAP[x])
@@ -125,7 +128,7 @@ df_ff = pd.concat(
     axis=1,
 )
 
-source_noisy_dataset = db.load_dataset("cifar100", split="test")
+source_noisy_dataset = db.load_dataset("cifar100", split="train")
 df_noisy = pd.DataFrame.from_dict(source_noisy_dataset)
 
 # Remove undesired classifications (people related)
@@ -170,8 +173,39 @@ model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 
 from torch.utils.data import Dataset, DataLoader
 
-train_df_temp = mixed_data.sample(frac=0.8)
-validation_df = mixed_data.drop(train_df_temp.index).reset_index(drop=True)
+train_df_temp = mixed_data.copy()
+
+train_df_temp[GENDER_COLUMN] = train_df_temp[GENDER_COLUMN].apply(
+    lambda x: sorted(x) if isinstance(x, list) else [x]
+)
+train_df_temp[RACE_COLUMN] = train_df_temp[RACE_COLUMN].apply(
+    lambda x: sorted(x) if isinstance(x, list) else [x]
+)
+
+train_df_temp[GENDER_COLUMN] = train_df_temp[GENDER_COLUMN].apply(lambda x: repr(x))
+train_df_temp[RACE_COLUMN] = train_df_temp[RACE_COLUMN].apply(lambda x: repr(x))
+
+train_df_temp = train_df_temp.groupby([GENDER_COLUMN, RACE_COLUMN]).sample(frac=0.8)
+
+import ast
+
+train_df_temp[GENDER_COLUMN] = train_df_temp[GENDER_COLUMN].apply(
+    lambda x: ast.literal_eval(x)
+)
+train_df_temp[RACE_COLUMN] = train_df_temp[RACE_COLUMN].apply(
+    lambda x: ast.literal_eval(x)
+)
+
+train_df_temp[GENDER_COLUMN] = train_df_temp[GENDER_COLUMN].apply(
+    lambda x: x[0] if len(x) == 1 else x
+)
+train_df_temp[RACE_COLUMN] = train_df_temp[RACE_COLUMN].apply(
+    lambda x: x[0] if len(x) == 1 else x
+)
+
+
+validation_df = mixed_data[~mixed_data[IMAGE_COLUMN].isin(train_df_temp[IMAGE_COLUMN])]
+validation_df = validation_df.reset_index(drop=True)
 train_df = train_df_temp.reset_index(drop=True)
 
 
