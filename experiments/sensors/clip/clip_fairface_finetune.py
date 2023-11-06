@@ -18,7 +18,6 @@ from bfair.datasets.build_tools.fairface import (
 from statistics import mean
 import datasets as db
 import pandas as pd
-from PIL import Image
 import numpy as np
 
 MALE_VALUE = "Male"
@@ -67,51 +66,6 @@ BALANCED = True
 """utils"""
 
 split_seed = 0
-
-
-def _get_concat_h_multi_resize(im_list, resample=Image.BICUBIC):
-    min_height = min(im.height for im in im_list)
-    im_list_resize = [
-        im.resize(
-            (int(im.width * min_height / im.height), min_height), resample=resample
-        )
-        for im in im_list
-    ]
-    total_width = sum(im.width for im in im_list_resize)
-    dst = Image.new("RGB", (total_width, min_height))
-    pos_x = 0
-    for im in im_list_resize:
-        dst.paste(im, (pos_x, 0))
-        pos_x += im.width
-    return dst
-
-
-def _get_concat_v_multi_resize(im_list, resample=Image.BICUBIC):
-    min_width = min(im.width for im in im_list)
-    im_list_resize = [
-        im.resize((min_width, int(im.height * min_width / im.width)), resample=resample)
-        for im in im_list
-    ]
-    total_height = sum(im.height for im in im_list_resize)
-    dst = Image.new("RGB", (min_width, total_height))
-    pos_y = 0
-    for im in im_list_resize:
-        dst.paste(im, (0, pos_y))
-        pos_y += im.height
-    return dst
-
-
-def _get_concat_tile_resize(im_list_2d, resample=Image.BICUBIC):
-    im_list_v = [
-        _get_concat_h_multi_resize(im_list_h, resample=resample)
-        for im_list_h in im_list_2d
-    ]
-    return _get_concat_v_multi_resize(im_list_v, resample=resample)
-
-
-def concat_images(image_list):
-    return _get_concat_tile_resize(image_list)
-
 
 source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="train")
 
@@ -447,10 +401,8 @@ for epoch in range(EPOCH):
             clip.model.convert_weights(model)
 
         pbar.set_description(
-            f"GENDER: train batchCE: {gender_total_loss.item()}", refresh=True
-        )
-        pbar.set_description(
-            f"RACE: train batchCE: {race_total_loss.item()}", refresh=True
+            f"GENDER: train batchCE: {gender_total_loss.item()}, RACE: train batchCE: {race_total_loss.item()}",
+            refresh=True,
         )
 
     gender_tr_loss /= step
@@ -519,10 +471,8 @@ for epoch in range(EPOCH):
             )
 
             val_pbar.set_description(
-                f"gender test batchCE: {gender_total_loss.item()}", refresh=True
-            )
-            val_pbar.set_description(
-                f"race test batchCE: {race_total_loss.item()}", refresh=True
+                f"gender test batchCE: {gender_total_loss.item()}, race test batchCE: {race_total_loss.item()}",
+                refresh=True,
             )
 
         gender_te_loss /= step
