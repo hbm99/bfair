@@ -86,7 +86,7 @@ def main():
     try:
         attr_cls = P_GENDER
         values = FF_GENDER_VALUES
-        logits_to_probs = "softmax"
+        logits_to_probs = "sigmoid"
 
         if DB_UTKFACE in args.dataset:
             dataset = load_utkface(split_seed=0)

@@ -12,11 +12,11 @@ class FinetunedClipSensor(ClipBasedSensor):
         self,
         filtering_pipeline: Sequence[Filter],
         learner,
+        logits_to_probs: str,
         tokens_pipeline: Sequence[List[str]],
         restricted_to: Union[str, Set[str]] = None,
-        logits_to_probs: str = "sigmoid",
     ) -> None:
         super().__init__(
-            filtering_pipeline, learner, tokens_pipeline, restricted_to, logits_to_probs
+            filtering_pipeline, learner, logits_to_probs, tokens_pipeline, restricted_to
         )
         self.model.load_state_dict(torch.load(MODEL_PATH))

@@ -60,7 +60,7 @@ _RACE_MAP = {
     6: SOUTHEAST_ASIAN_VALUE,
 }
 
-SIZE = 3000
+SIZE = 10000
 BALANCED = True
 
 """utils"""
@@ -120,7 +120,7 @@ import clip
 
 
 BATCH_SIZE = 1
-EPOCH = 10
+EPOCH = 12
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)

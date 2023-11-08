@@ -157,7 +157,7 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, logits_to_p
     elif selection == "learner":
         learner = get_learning_pipeline(sampler, prefix)
 
-    sensor = ClipBasedSensor.build(
+    sensor = FinetunedClipSensor.build(
         filtering_pipeline=filtering_pipeline,
         learner=learner,
         logits_to_probs=logits_to_probs,
