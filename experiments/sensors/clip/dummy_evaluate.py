@@ -99,7 +99,7 @@ if __name__ == "__main__":
         "always-both": scores_always_both,
     }
 
-    json_results['gender-mocks'] = gender_mocks
+    json_results["gender-mocks"] = gender_mocks
 
     baseline = "random-uniform"
 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         dataset, attribute, attribute_values
     )
 
-    json_results['gender_random_uniform'] = gender_scores_random_uniform
+    json_results["gender_random_uniform"] = gender_scores_random_uniform
 
     attribute = P_RACE
     attribute_values = RACE_VALUES
@@ -132,16 +132,13 @@ if __name__ == "__main__":
         dataset, attribute, attribute_values, baseline="mock_model", mock_model=""
     )
 
-    json_results['race-mocks'] = race_mocks
-    
+    json_results["race-mocks"] = race_mocks
+
     race_scores_random_uniform = get_baseline_score(
         dataset, attribute, attribute_values
     )
 
-    json_results['race_random_uniform'] = race_scores_random_uniform
+    json_results["race_random_uniform"] = race_scores_random_uniform
 
-    with open('results/dummy_evaluate/baseline_scores.json', 'a') as f:
+    with open("results/dummy_evaluate/baseline_scores.json", "a") as f:
         f.write(json.dumps(json_results, indent=4))
-
-
-
