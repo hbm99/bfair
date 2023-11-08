@@ -1,4 +1,5 @@
 from itertools import combinations
+import json
 import random
 from bfair.datasets.fairface import GENDER_VALUES, RACE_VALUES
 from bfair.datasets.noisymultifairface import load_dataset as load_noisymultifairface
@@ -65,7 +66,9 @@ def get_baseline_score(
 
 
 if __name__ == "__main__":
-    dataset = load_noisymultifairface(split_seed=0, balanced=False)  # balanced = True??
+    dataset = load_noisymultifairface(split_seed=0, balanced=True)
+
+    json_results = {}
 
     attribute = P_GENDER
     attribute_values = GENDER_VALUES
@@ -96,11 +99,15 @@ if __name__ == "__main__":
         "always-both": scores_always_both,
     }
 
+    json_results['gender-mocks'] = gender_mocks
+
     baseline = "random-uniform"
 
     gender_scores_random_uniform = get_baseline_score(
         dataset, attribute, attribute_values
     )
+
+    json_results['gender_random_uniform'] = gender_scores_random_uniform
 
     attribute = P_RACE
     attribute_values = RACE_VALUES
@@ -124,7 +131,17 @@ if __name__ == "__main__":
     race_mocks["always-none"] = get_baseline_score(
         dataset, attribute, attribute_values, baseline="mock_model", mock_model=""
     )
+
+    json_results['race-mocks'] = race_mocks
     
     race_scores_random_uniform = get_baseline_score(
         dataset, attribute, attribute_values
     )
+
+    json_results['race_random_uniform'] = race_scores_random_uniform
+
+    with open('results/dummy_evaluate/baseline_scores.json', 'a') as f:
+        f.write(json.dumps(json_results, indent=4))
+
+
+
