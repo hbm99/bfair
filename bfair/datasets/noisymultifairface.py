@@ -1,3 +1,4 @@
+import random
 import pandas as pd
 
 import datasets as db
@@ -29,6 +30,7 @@ def load_dataset(split_seed=None, **kwargs):
         split_seed=split_seed,
         transform_to_paths=kwargs.get("transform_to_paths", True),
         balanced=kwargs.get("balanced", True),
+        decision_columns=kwargs.get("decision_columns", False),
     )
 
 
@@ -39,6 +41,7 @@ class NoisyMultiFairFaceDataset(Dataset):
         split_seed=0,
         transform_to_paths=True,
         balanced=True,
+        decision_columns=False,
     ):
         source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="validation")
 
@@ -82,5 +85,10 @@ class NoisyMultiFairFaceDataset(Dataset):
 
         if transform_to_paths:
             save_images_to_disk(mixed_data, IMAGE_DIR)
+
+        if decision_columns:
+            random.seed(split_seed)
+            for i in range(30):
+                mixed_data[f"decision_{i}"] = [random.randint(0, 1) for _ in range(len(mixed_data))]
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
