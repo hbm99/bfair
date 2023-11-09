@@ -1,22 +1,36 @@
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 from bfair.datasets.fairface import GENDER_VALUES, IMAGE_COLUMN
+from bfair.datasets.noisymultifairface import load_dataset as load_noisymultifairface
 from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.clip.base import ClipBasedSensor
 from bfair.sensors.image.clip.finetuned_clip.base import FinetunedClipSensor
 from bfair.sensors.optimization import compute_errors, compute_scores
-from experiments.sensors.clip.optimize import DB_NOISYMULTIFAIRFACE
 from autogoal.kb import Matrix
 from bfair.metrics import exploded_statistical_parity
+
+MODELS = {
+    "logistic_regression": LogisticRegression,
+    "decision_tree": DecisionTreeClassifier,
+    "random_forest": RandomForestClassifier,
+    "gradient_boosting_classifier": GradientBoostingClassifier,
+    "svm": SVC,
+    "knn": KNeighborsClassifier,
+}
 
 BASED_SENSOR = ClipBasedSensor
 FINETUNED_SENSOR = FinetunedClipSensor
 
 target = P_GENDER
 target_values = GENDER_VALUES
-dataset = DB_NOISYMULTIFAIRFACE(split_seed=0, balanced=True)
+dataset = load_noisymultifairface(split_seed=0, balanced=True)
 sensor_type = FINETUNED_SENSOR
 filtering_pipeline = None
-learner = None
+learner = MODELS["logistic_regression"]
 logits_to_probs = "sigmoid"
 tokens_pipeline = [[value.lower() for value in target_values]]
 target_column = None
@@ -28,9 +42,9 @@ X_test = dataset.test[IMAGE_COLUMN]
 y_test = dataset.test[target]
 
 
-
-
-sensor = sensor_type.build(filtering_pipeline, learner, logits_to_probs, tokens_pipeline)
+sensor = sensor_type.build(
+    filtering_pipeline, learner, logits_to_probs, tokens_pipeline
+)
 handler = ImageSensorHandler([sensor])
 
 handler.fit(X_train, y_train, target_values, target)
