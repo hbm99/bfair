@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import numpy as np
 
 import datasets as db
 from bfair.datasets.build_tools.fairface import (
@@ -12,8 +13,10 @@ from bfair.datasets.fairface import (
     _RACE_MAP,
     AGE_COLUMN,
     GENDER_COLUMN,
+    GENDER_VALUES,
     IMAGE_COLUMN,
     RACE_COLUMN,
+    RACE_VALUES,
 )
 
 from .base import Dataset
@@ -88,7 +91,54 @@ class NoisyMultiFairFaceDataset(Dataset):
 
         if decision_columns:
             random.seed(split_seed)
-            for i in range(30):
-                mixed_data[f"decision_{i}"] = [random.randint(0, 1) for _ in range(len(mixed_data))]
+            mixed_data["random_decision"] = [
+                random.randint(0, 1) for _ in range(len(mixed_data))
+            ]
+
+            def apply_biased_decision_changes(mixed_data):
+                favored_class = {
+                    GENDER_COLUMN: GENDER_VALUES[1],
+                    RACE_COLUMN: RACE_VALUES[1],
+                }
+                mapping = {
+                    GENDER_COLUMN: {
+                        gender: i % 2 for i, gender in enumerate(GENDER_VALUES)
+                    },
+                    RACE_COLUMN: {race: i % 2 for i, race in enumerate(RACE_VALUES)},
+                }
+                for attr in [GENDER_COLUMN, RACE_COLUMN]:
+                    column_name = attr + "_biased_decision"
+                    mixed_data[column_name] = (
+                        mixed_data[attr]
+                        .replace(mapping[attr])
+                        .apply(
+                            lambda x: (
+                                1
+                                if not isinstance(x, int) and favored_class[attr] in x
+                                else 0
+                            )
+                        )
+                    )
+
+                    # Define the percentages
+                    pct_change_1_to_0 = 0.20  # 20% of 1s to 0s
+                    pct_change_0_to_1 = 0.30  # 30% of 0s to 1s
+
+                    # Create masks for the changes
+                    mask_1s = (mixed_data[column_name] == 1) & (
+                        np.random.rand(len(mixed_data)) <= pct_change_1_to_0
+                    )
+                    mask_0s = (mixed_data[column_name] == 0) & (
+                        np.random.rand(len(mixed_data)) <= pct_change_0_to_1
+                    )
+
+                    # Apply the masks and make the changes
+                    mixed_data.loc[mask_1s, column_name] = 0
+                    mixed_data.loc[mask_0s, column_name] = 1
+
+                return mixed_data
+
+            # Call the function to apply biased decision changes
+            mixed_data = apply_biased_decision_changes(mixed_data)
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
