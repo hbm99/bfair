@@ -95,18 +95,12 @@ class NoisyMultiFairFaceDataset(Dataset):
                 random.randint(0, 1) for _ in range(len(mixed_data))
             ]
 
-            def apply_biased_decision_changes(mixed_data):
-                favored_class = {
-                    GENDER_COLUMN: GENDER_VALUES[1],
-                    RACE_COLUMN: RACE_VALUES[1],
-                }
-                mapping = {
-                    GENDER_COLUMN: {
-                        gender: i % 2 for i, gender in enumerate(GENDER_VALUES)
-                    },
-                    RACE_COLUMN: {race: i % 2 for i, race in enumerate(RACE_VALUES)},
-                }
-                for attr in [GENDER_COLUMN, RACE_COLUMN]:
+            def apply_biased_decision_changes(mixed_data, mapping):
+                for attr in mapping.keys():
+
+                    def contains_at_least_one(values, target) -> bool:
+                        return any(value in target for value in values)
+
                     column_name = attr + "_biased_decision"
                     mixed_data[column_name] = (
                         mixed_data[attr]
@@ -114,7 +108,15 @@ class NoisyMultiFairFaceDataset(Dataset):
                         .apply(
                             lambda x: (
                                 1
-                                if not isinstance(x, int) and favored_class[attr] in x
+                                if not isinstance(x, int)
+                                and contains_at_least_one(
+                                    [
+                                        class_value
+                                        for class_value, favored in mapping[attr].items()
+                                        if favored == 1
+                                    ],
+                                    x,
+                                )
                                 else 0
                             )
                         )
@@ -138,7 +140,14 @@ class NoisyMultiFairFaceDataset(Dataset):
 
                 return mixed_data
 
+            fav_class_mapping = {
+                GENDER_COLUMN: {
+                    gender: i % 2 for i, gender in enumerate(GENDER_VALUES)
+                },
+                RACE_COLUMN: {race: i % 2 for i, race in enumerate(RACE_VALUES)},
+            }
+
             # Call the function to apply biased decision changes
-            mixed_data = apply_biased_decision_changes(mixed_data)
+            mixed_data = apply_biased_decision_changes(mixed_data, fav_class_mapping)
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
