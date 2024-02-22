@@ -1,6 +1,5 @@
 import random
 import pandas as pd
-import numpy as np
 
 import datasets as db
 from bfair.datasets.build_tools.fairface import (
@@ -13,10 +12,17 @@ from bfair.datasets.fairface import (
     _RACE_MAP,
     AGE_COLUMN,
     GENDER_COLUMN,
-    GENDER_VALUES,
-    IMAGE_COLUMN,
     RACE_COLUMN,
-    RACE_VALUES,
+    IMAGE_COLUMN,
+    FEMALE_VALUE,
+    MALE_VALUE,
+    EAST_ASIAN_VALUE,
+    INDIAN_VALUE,
+    BLACK_VALUE,
+    WHITE_VALUE,
+    MIDDLE_EASTERN_VALUE,
+    LATINO_HISPANIC_VALUE,
+    SOUTHEAST_ASIAN_VALUE,
 )
 
 from .base import Dataset
@@ -95,59 +101,34 @@ class NoisyMultiFairFaceDataset(Dataset):
                 random.randint(0, 1) for _ in range(len(mixed_data))
             ]
 
-            def apply_biased_decision_changes(mixed_data, mapping):
-                for attr in mapping.keys():
+            def get_biased_decision(attr, mixed_data, cls_probs):
+                biased_decision = []
+                for i in range(len(mixed_data)):
+                    annotations = mixed_data[attr].iloc[i]
+                    prob = 1
+                    if not isinstance(annotations, list):
+                        annotations = [annotations]
+                    for annotation in annotations:
+                        prob *= cls_probs[annotation]
+                    biased_decision.append(1 if prob > random.randint(0, 1) else 0)
+                return biased_decision
 
-                    def contains_at_least_one(values, target) -> bool:
-                        return any(value in target for value in values)
-
-                    column_name = attr + "_biased_decision"
-                    mixed_data[column_name] = (
-                        mixed_data[attr]
-                        .replace(mapping[attr])
-                        .apply(
-                            lambda x: (
-                                1
-                                if not isinstance(x, int)
-                                and contains_at_least_one(
-                                    [
-                                        class_value
-                                        for class_value, favored in mapping[attr].items()
-                                        if favored == 1
-                                    ],
-                                    x,
-                                )
-                                else 0
-                            )
-                        )
-                    )
-
-                    # Define the percentages
-                    pct_change_1_to_0 = 0.20  # 20% of 1s to 0s
-                    pct_change_0_to_1 = 0.30  # 30% of 0s to 1s
-
-                    # Create masks for the changes
-                    mask_1s = (mixed_data[column_name] == 1) & (
-                        np.random.rand(len(mixed_data)) <= pct_change_1_to_0
-                    )
-                    mask_0s = (mixed_data[column_name] == 0) & (
-                        np.random.rand(len(mixed_data)) <= pct_change_0_to_1
-                    )
-
-                    # Apply the masks and make the changes
-                    mixed_data.loc[mask_1s, column_name] = 0
-                    mixed_data.loc[mask_0s, column_name] = 1
-
-                return mixed_data
-
-            fav_class_mapping = {
-                GENDER_COLUMN: {
-                    gender: i % 2 for i, gender in enumerate(GENDER_VALUES)
+            cls_probs = {
+                GENDER_COLUMN: {MALE_VALUE: 0.7, FEMALE_VALUE: 0.3, "": 0},
+                RACE_COLUMN: {
+                    EAST_ASIAN_VALUE: 0.25,
+                    INDIAN_VALUE: 0.12,
+                    BLACK_VALUE: 0.14,
+                    WHITE_VALUE: 0.95,
+                    MIDDLE_EASTERN_VALUE: 0.08,
+                    LATINO_HISPANIC_VALUE: 0.23,
+                    SOUTHEAST_ASIAN_VALUE: 0.05,
+                    "": 0,
                 },
-                RACE_COLUMN: {race: i % 2 for i, race in enumerate(RACE_VALUES)},
             }
-
-            # Call the function to apply biased decision changes
-            mixed_data = apply_biased_decision_changes(mixed_data, fav_class_mapping)
+            for attr in [GENDER_COLUMN, RACE_COLUMN]:
+                mixed_data[attr + "_biased_decision"] = get_biased_decision(
+                    attr, mixed_data, cls_probs[attr]
+                )
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)
