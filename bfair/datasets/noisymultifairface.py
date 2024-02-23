@@ -105,24 +105,25 @@ class NoisyMultiFairFaceDataset(Dataset):
                 biased_decision = []
                 for i in range(len(mixed_data)):
                     annotations = mixed_data[attr].iloc[i]
-                    prob = 1
+                    prob = 0
                     if not isinstance(annotations, list):
                         annotations = [annotations]
                     for annotation in annotations:
-                        prob *= cls_probs[annotation]
+                        prob += cls_probs[annotation]
+                    prob /= len(annotations)
                     biased_decision.append(1 if prob > random.randint(0, 1) else 0)
                 return biased_decision
 
             cls_probs = {
                 GENDER_COLUMN: {MALE_VALUE: 0.7, FEMALE_VALUE: 0.3, "": 0},
                 RACE_COLUMN: {
-                    EAST_ASIAN_VALUE: 0.25,
-                    INDIAN_VALUE: 0.12,
-                    BLACK_VALUE: 0.14,
-                    WHITE_VALUE: 0.95,
-                    MIDDLE_EASTERN_VALUE: 0.08,
-                    LATINO_HISPANIC_VALUE: 0.23,
-                    SOUTHEAST_ASIAN_VALUE: 0.05,
+                    EAST_ASIAN_VALUE: 0.05,
+                    INDIAN_VALUE: 0.02,
+                    BLACK_VALUE: 0.01,
+                    WHITE_VALUE: 0.99,
+                    MIDDLE_EASTERN_VALUE: 0.06,
+                    LATINO_HISPANIC_VALUE: 0.03,
+                    SOUTHEAST_ASIAN_VALUE: 0.07,
                     "": 0,
                 },
             }
