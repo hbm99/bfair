@@ -1,5 +1,6 @@
-from itertools import combinations
-from statistics import mean
+# from itertools import combinations
+# from statistics import mean
+import os
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -15,8 +16,10 @@ from bfair.sensors.image.clip.optimization import eval_preprocess
 from bfair.sensors.optimization import compute_errors, compute_scores
 from autogoal.kb import Matrix
 from bfair.metrics import exploded_statistical_parity
-from experiments.sensors.clip.dummy_evaluate import _get_random_uniform_predictions
-from statistics import stdev
+
+# from experiments.sensors.clip.dummy_evaluate import _get_random_uniform_predictions
+# from statistics import stdev
+import pickle
 
 MODELS = {
     "logistic_regression": LogisticRegression,
@@ -62,12 +65,18 @@ X_test = dataset.test[IMAGE_COLUMN]
 y_test = dataset.test[attribute]
 
 
-sensor = sensor_type.build(
-    filtering_pipeline, learner, logits_to_probs, tokens_pipeline
-)
-handler = ImageSensorHandler([sensor])
-handler.fit(X_train, y_train, attribute_values, attribute)
-y_pred = handler.annotate(X_test, Matrix, attribute_values, attribute)
+if os.path.isfile(os.path.join(".", attribute + "_predictions")):
+    with open(attribute + "_predictions", "rb") as fp:
+        y_pred = pickle.load(fp)
+else:
+    sensor = sensor_type.build(
+        filtering_pipeline, learner, logits_to_probs, tokens_pipeline
+    )
+    handler = ImageSensorHandler([sensor])
+    handler.fit(X_train, y_train, attribute_values, attribute)
+    y_pred = handler.annotate(X_test, Matrix, attribute_values, attribute)
+    with open(attribute + "_predictions", "wb") as fp:
+        pickle.dump(y_pred, fp)
 
 # for classif in attribute_values:
 #     y_pred = [{classif} for _ in range(len(y_test))]

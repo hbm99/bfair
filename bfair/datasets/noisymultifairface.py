@@ -115,15 +115,15 @@ class NoisyMultiFairFaceDataset(Dataset):
                 return biased_decision
 
             cls_probs = {
-                GENDER_COLUMN: {MALE_VALUE: 0.7, FEMALE_VALUE: 0.3, "": 0},
+                GENDER_COLUMN: {MALE_VALUE: 1, FEMALE_VALUE: 0, "": 0},
                 RACE_COLUMN: {
-                    EAST_ASIAN_VALUE: 0.05,
-                    INDIAN_VALUE: 0.02,
-                    BLACK_VALUE: 0.01,
-                    WHITE_VALUE: 0.99,
-                    MIDDLE_EASTERN_VALUE: 0.06,
-                    LATINO_HISPANIC_VALUE: 0.03,
-                    SOUTHEAST_ASIAN_VALUE: 0.07,
+                    EAST_ASIAN_VALUE: 0,
+                    INDIAN_VALUE: 0,
+                    BLACK_VALUE: 0,
+                    WHITE_VALUE: 1,
+                    MIDDLE_EASTERN_VALUE: 0,
+                    LATINO_HISPANIC_VALUE: 0,
+                    SOUTHEAST_ASIAN_VALUE: 0,
                     "": 0,
                 },
             }
