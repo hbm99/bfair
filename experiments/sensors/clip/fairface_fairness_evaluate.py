@@ -35,13 +35,14 @@ FINETUNED_SENSOR = FinetunedClipSensor
 
 ### CONFIGURATION ###
 
+metric = "f1"
 attribute = P_RACE
 attribute_values = RACE_VALUES
 dataset = load_noisymultifairface(split_seed=0, balanced=True, decision_columns=True)
 sensor_type = BASED_SENSOR
 filtering_pipeline = None
-learner = MODELS["gradient_boosting_classifier"]
-logits_to_probs = "normalize_softmax"
+learner = MODELS["svm"]
+logits_to_probs = "softmax"
 tokens_pipeline = [
     [
         "An image of a person of " + value.lower() + " " + attribute
@@ -65,8 +66,9 @@ X_test = dataset.test[IMAGE_COLUMN]
 y_test = dataset.test[attribute]
 
 
-if os.path.isfile(os.path.join(".", attribute + "_predictions")):
-    with open(attribute + "_predictions", "rb") as fp:
+file_name = attribute + "_best_" + metric + "_predictions"
+if os.path.isfile(os.path.join(".", file_name)):
+    with open(file_name, "rb") as fp:
         y_pred = pickle.load(fp)
 else:
     sensor = sensor_type.build(
@@ -75,7 +77,7 @@ else:
     handler = ImageSensorHandler([sensor])
     handler.fit(X_train, y_train, attribute_values, attribute)
     y_pred = handler.annotate(X_test, Matrix, attribute_values, attribute)
-    with open(attribute + "_predictions", "wb") as fp:
+    with open(file_name, "wb") as fp:
         pickle.dump(y_pred, fp)
 
 # for classif in attribute_values:
