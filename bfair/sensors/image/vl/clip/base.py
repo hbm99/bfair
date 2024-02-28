@@ -6,42 +6,38 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
 import torch
-from autogoal.kb import Matrix, SemanticType
 from PIL import Image
 
-from bfair.sensors.base import Sensor
+from bfair.sensors.image.vl.base import VisionLanguageBasedSensor as VLBasedSensor
 from bfair.sensors.text.embedding.filters import Filter
 
 BATCH_SIZE = 64
 
 
-class ClipBasedSensor(Sensor):
+class ClipBasedSensor(VLBasedSensor):
     def __init__(
         self,
+        model,
+        *,
         filtering_pipeline: Sequence[Filter],
         learner,
         logits_to_probs: str,
         tokens_pipeline: Sequence[List[str]],
-        restricted_to: Union[str, Set[str]] = None,
+        restricted_to: Union[str, Set[str]] = None,  # type: ignore
     ) -> None:
-        super().__init__(restricted_to)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model, self.preprocess = clip.load("ViT-B/32", self.device)
-        self.filtering_pipeline = filtering_pipeline
-        self.learner = learner
-        self.tokens_pipeline = tokens_pipeline
+        if model is None:
+            model = clip.load(
+                "ViT-B/32", "cuda" if torch.cuda.is_available() else "cpu"
+            )
+        super().__init__(
+            model,
+            filtering_pipeline,
+            learner,
+            logits_to_probs,
+            tokens_pipeline,
+            restricted_to,
+        )
         self.multi_label_binarizer = None
-        self.logits_to_probs = logits_to_probs
-
-    @classmethod
-    def build(
-        cls,
-        filtering_pipeline=(),
-        learner=(),
-        logits_to_probs="sigmoid",
-        tokens_pipeline=(),
-    ):
-        return cls(filtering_pipeline, learner, logits_to_probs, tokens_pipeline)
 
     def __call__(self, item, attributes: List[str], attr_cls: str):
         """
@@ -68,7 +64,7 @@ class ClipBasedSensor(Sensor):
         for labels in results:
             X.append([extended_labels[1] for extended_labels in labels[1]])
         y_pred_transformed = self.learner.predict(X)
-        y_pred = self.multi_label_binarizer.inverse_transform(y_pred_transformed)
+        y_pred = self.multi_label_binarizer.inverse_transform(y_pred_transformed)  # type: ignore
         return list(y_pred)
 
     def get_filtered(self, results):
@@ -118,7 +114,7 @@ class ClipBasedSensor(Sensor):
         mlb.fit(y)
         y_transformed = mlb.transform(y)
 
-        for train_index, val_index in mlskf.split(X, y_transformed):
+        for train_index, val_index in mlskf.split(X, y_transformed):  # type: ignore
             X_train, X_val = X[train_index], X[val_index]
 
             y_train_transformed, y_val_transformed = (
@@ -149,8 +145,9 @@ class ClipBasedSensor(Sensor):
         :return: labels from attributed tokens
         """
 
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         for tokens in self.tokens_pipeline:
-            text = clip.tokenize(tokens).to(self.device)
+            text = clip.tokenize(tokens).to(device)
 
         results = []
         i = 0
@@ -166,7 +163,7 @@ class ClipBasedSensor(Sensor):
                 logits_per_image = torch.empty((0, len(attributes)))
                 for image in images:
                     image = image.unsqueeze(0)
-                    image = image.to(self.device)
+                    image = image.to(device)
                     logits_per_image = torch.cat(
                         (
                             logits_per_image,
@@ -176,13 +173,9 @@ class ClipBasedSensor(Sensor):
                     )
 
                 if self.logits_to_probs == "sigmoid":
-                    batch_probs = (
-                        torch.sigmoid(logits_per_image).to(self.device).numpy()
-                    )
+                    batch_probs = torch.sigmoid(logits_per_image).to(device).numpy()
                 else:
-                    batch_probs = (
-                        logits_per_image.softmax(dim=-1).to(self.device).numpy()
-                    )
+                    batch_probs = logits_per_image.softmax(dim=-1).to(device).numpy()
                     if self.logits_to_probs == "normalize_softmax":
                         normalized_batch_probs = []
                         for probs in batch_probs:
@@ -214,6 +207,3 @@ class ClipBasedSensor(Sensor):
                 flatten_results.append(result)
 
         return flatten_results
-
-    def _get_input_type(self) -> SemanticType:
-        return Matrix

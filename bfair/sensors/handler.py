@@ -2,7 +2,7 @@ from typing import Sequence, List, Callable, Tuple
 from bfair.sensors.base import Sensor
 from autogoal.kb import SemanticType
 
-from bfair.sensors.image.clip.base import ClipBasedSensor
+from bfair.sensors.image.vl.clip.base import ClipBasedSensor
 
 
 class SensorHandler:

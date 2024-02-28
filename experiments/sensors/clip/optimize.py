@@ -15,7 +15,7 @@ from bfair.datasets.fairface import RACE_VALUES as FF_RACE_VALUES
 from bfair.datasets.utkface import GENDER_VALUES as UTKF_GENDER_VALUES
 from bfair.datasets.utkface import RACE_VALUES as UTKF_RACE_VALUES
 from bfair.sensors import P_GENDER, P_RACE
-from bfair.sensors.image.clip.optimization import optimize
+from bfair.sensors.image.vl.clip.optimization import optimize
 from bfair.sensors.optimization import (
     MACRO_ACC,
     MACRO_F1,
@@ -112,7 +112,7 @@ def main():
             y_test,
             values,
             attr_cls,
-            score_key=args.metric if args.metric else [MACRO_F1],
+            score_key=args.metric if args.metric else [MACRO_F1], # type: ignore
             force_clip_based_sensor=True,
             pop_size=args.popsize,
             search_iterations=args.iterations,

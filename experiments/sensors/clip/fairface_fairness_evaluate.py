@@ -10,9 +10,9 @@ from bfair.datasets.fairface import GENDER_VALUES, IMAGE_COLUMN, RACE_VALUES
 from bfair.datasets.noisymultifairface import load_dataset as load_noisymultifairface
 from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.handler import ImageSensorHandler
-from bfair.sensors.image.clip.base import ClipBasedSensor
-from bfair.sensors.image.clip.finetuned_clip.base import FinetunedClipSensor
-from bfair.sensors.image.clip.optimization import eval_preprocess
+from bfair.sensors.image.vl.clip.base import ClipBasedSensor
+from bfair.sensors.image.vl.clip.finetuned_clip.base import FinetunedClipSensor
+from bfair.sensors.image.vl.clip.optimization import eval_preprocess
 from bfair.sensors.optimization import compute_errors, compute_scores
 from bfair.metrics import exploded_statistical_parity
 
@@ -30,7 +30,7 @@ FINETUNED_SENSOR = FinetunedClipSensor
 
 ### CONFIGURATION ###
 
-metric = "acc"
+metric = "test_acc"
 attribute = P_GENDER
 attribute_values = GENDER_VALUES
 dataset = load_noisymultifairface(split_seed=0, balanced=True, decision_columns=True)
@@ -63,9 +63,14 @@ if os.path.isfile(os.path.join(".", file_name)):
     with open(file_name, "rb") as fp:
         y_pred = pickle.load(fp)
 else:
-    sensor = sensor_type.build(
-        filtering_pipeline, learner, logits_to_probs, tokens_pipeline
+    sensor = sensor_type(
+        model = None,
+        filtering_pipeline=filtering_pipeline, # type: ignore
+        learner=learner,
+        tokens_pipeline=tokens_pipeline,
+        logits_to_probs=logits_to_probs,
     )
+
     handler = ImageSensorHandler([sensor])
     handler.fit(X_train, y_train, attribute_values, attribute)
     y_pred = handler.annotate(X_test, Matrix, attribute_values, attribute)
