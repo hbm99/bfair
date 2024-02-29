@@ -80,7 +80,7 @@ def optimize(
             attr_cls,
             score_func=build_score_fn(attributes, score_key),
         ),
-        maximize=[True] * len(score_key), # type: ignore
+        maximize=[True] * len(score_key),  # type: ignore
         pop_size=pop_size,
         evaluation_timeout=evaluation_timeout,
         memory_limit=memory_limit,
@@ -114,7 +114,7 @@ def get_loggers(log_path=None):
         from bfair.utils.autogoal import FileLogger
 
         file_logger = FileLogger(output_path=log_path)
-        loggers.append(file_logger) # type: ignore
+        loggers.append(file_logger)  # type: ignore
 
     return loggers
 
@@ -131,15 +131,15 @@ def generate(
     """
     Generates a new SampleModel object with the given Sampler.
     """
-    sampler = LogSampler(sampler) # type: ignore
+    sampler = LogSampler(sampler)  # type: ignore
     sensors = []
     if force_clip_based_sensor or (
         consider_clip_based_sensor and sampler.boolean("include-clip-sensor")
     ):
-        sensor = get_clip_based_sensor(sampler, attr_cls, attributes, logits_to_probs) # type: ignore
+        sensor = get_clip_based_sensor(sampler, attr_cls, attributes, logits_to_probs)  # type: ignore
         sensors.append(sensor)
 
-    handler = ImageSensorHandler(sensors, merge=None) # type: ignore
+    handler = ImageSensorHandler(sensors, merge=None)  # type: ignore
     return SampleModel(sampler, handler)
 
 
@@ -157,8 +157,9 @@ def get_clip_based_sensor(sampler: LogSampler, attr_cls, attributes, logits_to_p
     elif selection == "learner":
         learner = get_learning_pipeline(sampler, prefix)
 
-    sensor = FinetunedClipSensor.build(
-        filtering_pipeline=filtering_pipeline,
+    sensor = FinetunedClipSensor(
+        None,
+        filtering_pipeline=filtering_pipeline,  # type: ignore
         learner=learner,
         logits_to_probs=logits_to_probs,
         tokens_pipeline=tokens_pipeline,
@@ -242,7 +243,7 @@ def get_filter(sampler: LogSampler, allow_none: bool, prefix: str):
         )
         return BestScoreFilter(
             threshold=relative_threshold,
-            zero_threshold=norm_threshold, # type: ignore
+            zero_threshold=norm_threshold,  # type: ignore
         )
 
     elif filter_name == "None" and allow_none:

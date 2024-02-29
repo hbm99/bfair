@@ -11,10 +11,7 @@ Loading dataset
 
 # Commented out IPython magic to ensure Python compatibility.
 
-from bfair.datasets.build_tools.fairface import (
-    create_balanced_dataset,
-    create_mixed_dataset,
-)
+from bfair.datasets.fairface import FairFaceDataset
 from statistics import mean
 import datasets as db
 import pandas as pd
@@ -104,9 +101,9 @@ new_df_noisy = new_df_noisy.sample(frac=1, random_state=split_seed).reset_index(
 new_df_noisy = new_df_noisy.fillna("")
 
 if BALANCED:
-    mixed_data = create_balanced_dataset(new_df_noisy, SIZE, 0)
+    mixed_data = FairFaceDataset.create_balanced_dataset(new_df_noisy, SIZE, 0)
 else:
-    mixed_data = create_mixed_dataset(new_df_noisy, SIZE, 0)
+    mixed_data = FairFaceDataset.create_mixed_dataset(new_df_noisy, SIZE, 0)
 
 """Loaded dataset!
 
