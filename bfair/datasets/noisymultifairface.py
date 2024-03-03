@@ -35,6 +35,7 @@ def load_dataset(split_seed=None, **kwargs):
         transform_to_paths=kwargs.get("transform_to_paths", True),
         balanced=kwargs.get("balanced", True),
         decision_columns=kwargs.get("decision_columns", False),
+        split=kwargs.get("split", "train"),
     )
 
 
@@ -46,8 +47,9 @@ class NoisyMultiFairFaceDataset(FairFaceDataset):
         transform_to_paths=True,
         balanced=True,
         decision_columns=False,
+        split="train",
     ):
-        source_ff = db.load_dataset("HuggingFaceM4/FairFace", split="validation")
+        source_ff = db.load_dataset("HuggingFaceM4/FairFace", split=split)
 
         df_ff = pd.DataFrame.from_dict(source_ff)
         gender = df_ff[GENDER_COLUMN].apply(lambda x: _GENDER_MAP[x])
@@ -91,40 +93,6 @@ class NoisyMultiFairFaceDataset(FairFaceDataset):
             cls.save_images_to_disk(mixed_data, IMAGE_DIR)
 
         if decision_columns:
-            random.seed(split_seed)
-            mixed_data["random_decision"] = [
-                random.randint(0, 1) for _ in range(len(mixed_data))
-            ]
-
-            def get_biased_decision(attr, mixed_data, cls_probs):
-                biased_decision = []
-                for i in range(len(mixed_data)):
-                    annotations = mixed_data[attr].iloc[i]
-                    prob = 0
-                    if not isinstance(annotations, list):
-                        annotations = [annotations]
-                    for annotation in annotations:
-                        prob += cls_probs[annotation]
-                    prob /= len(annotations)
-                    biased_decision.append(1 if prob > random.randint(0, 1) else 0)
-                return biased_decision
-
-            cls_probs = {
-                GENDER_COLUMN: {MALE_VALUE: 1, FEMALE_VALUE: 0, "": 0},
-                RACE_COLUMN: {
-                    EAST_ASIAN_VALUE: 0,
-                    INDIAN_VALUE: 0,
-                    BLACK_VALUE: 0,
-                    WHITE_VALUE: 1,
-                    MIDDLE_EASTERN_VALUE: 0,
-                    LATINO_HISPANIC_VALUE: 0,
-                    SOUTHEAST_ASIAN_VALUE: 0,
-                    "": 0,
-                },
-            }
-            for attr in [GENDER_COLUMN, RACE_COLUMN]:
-                mixed_data[attr + "_biased_decision"] = get_biased_decision(
-                    attr, mixed_data, cls_probs[attr]
-                )
+            cls.add_decisions(split_seed, mixed_data)
 
         return NoisyMultiFairFaceDataset(data=mixed_data, split_seed=split_seed)

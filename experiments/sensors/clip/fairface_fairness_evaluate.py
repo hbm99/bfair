@@ -7,7 +7,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from autogoal.kb import Matrix
 from bfair.datasets.fairface import GENDER_VALUES, IMAGE_COLUMN, RACE_VALUES
-from bfair.datasets.noisymultifairface import load_dataset as load_noisymultifairface
+from bfair.datasets.fairface import load_dataset as load_fairface
 from bfair.sensors.base import P_GENDER, P_RACE
 from bfair.sensors.handler import ImageSensorHandler
 from bfair.sensors.image.vl.clip.base import ClipBasedSensor
@@ -30,10 +30,10 @@ FINETUNED_SENSOR = FinetunedClipSensor
 
 ### CONFIGURATION ###
 
-metric = "test_acc"
+metric = "acc"
 attribute = P_GENDER
 attribute_values = GENDER_VALUES
-dataset = load_noisymultifairface(split_seed=0, balanced=True, decision_columns=True)
+dataset = load_fairface(split_seed=0, decision_columns=True, split="validation")
 sensor_type = FINETUNED_SENSOR
 filtering_pipeline = None
 learner = MODELS["random_forest"]
@@ -64,8 +64,8 @@ if os.path.isfile(os.path.join(".", file_name)):
         y_pred = pickle.load(fp)
 else:
     sensor = sensor_type(
-        model = None,
-        filtering_pipeline=filtering_pipeline, # type: ignore
+        model=None,
+        filtering_pipeline=filtering_pipeline,  # type: ignore
         learner=learner,
         tokens_pipeline=tokens_pipeline,
         logits_to_probs=logits_to_probs,

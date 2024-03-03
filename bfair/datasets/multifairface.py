@@ -21,13 +21,14 @@ def load_dataset(split_seed=None, **kwargs):
         split_seed=split_seed,
         transform_to_paths=kwargs.get("transform_to_paths", True),
         balanced=kwargs.get("balanced", True),
+        split=kwargs.get("split", "train"),
     )
 
 
 class MultiFairFaceDataset(FairFaceDataset):
     @classmethod
-    def load(cls, split_seed=0, transform_to_paths=True, balanced=True):
-        source = db.load_dataset("HuggingFaceM4/FairFace", split="train")
+    def load(cls, split_seed=0, transform_to_paths=True, balanced=True, split="train"):
+        source = db.load_dataset("HuggingFaceM4/FairFace", split=split)
 
         df = pd.DataFrame.from_dict(source)
         gender = df[GENDER_COLUMN].apply(lambda x: _GENDER_MAP[x])
